@@ -102,7 +102,8 @@ void setup()
   SPI.begin();
   
   //Setup Nanotron radios
-  Serial.println("Setting Nanotron Radio to radio ID: " + radioID); 
+  Serial.print("Setting Nanotron Radio to radio ID: "); 
+  Serial.println(radioID); 
   Serial.println("SFAC");
   Serial2.println("SFAC");
   delay(d);
