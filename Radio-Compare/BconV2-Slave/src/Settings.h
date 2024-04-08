@@ -8,7 +8,7 @@
   
 *******************************************************************************************************/
 // Set Station ID
-uint32_t RangingAddress = 6;         //must match address in master (Single didgit only for now, Generalize to have any number)
+uint32_t RangingAddress = 1;         //must match address in master (Single didgit only for now, Generalize to have any number)
 String radioID = "000000000B0" + String(RangingAddress);  // 9 0s followed by B01 to Bxx
 
 
