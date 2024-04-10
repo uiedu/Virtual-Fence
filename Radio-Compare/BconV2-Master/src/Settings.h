@@ -5,6 +5,16 @@
   suitable for the intended purpose and free from errors.
 *******************************************************************************************************/
 
+
+
+
+// Flash memory 
+#define Flashpin         21				// Flash memory SS pin
+uint16_t expectedDeviceID = 0xEF40;
+uint32_t Last_Address = 0;
+String Msg2Write;
+uint8_t Stations = 5;
+
 //*******  Setup hardware pin definitions here ! ***************
 
 //These are the pin definitions for one of my own boards, the Easy Pro Mini,
@@ -23,7 +33,7 @@
 //LoRa Modem Varaible Parameters (Put varaibles here )
 uint8_t Bandwidth = LORA_BW_0800;           //LoRa bandwidth
 uint8_t SpreadingFactor = LORA_SF8;         //LoRa spreading factor
-int8_t RangingTXPower = 10;                 //Transmit power used
+int8_t RangingTXPower = 31;                 //Transmit power used
 uint32_t RangingAddress = 1;              //must match address in recever
 uint16_t Calibration = 11426;              //Manual Ranging calibrarion value
 /*
