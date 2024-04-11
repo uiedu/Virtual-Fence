@@ -26,41 +26,21 @@ uint32_t response_sent;
 
 void led_Flash(unsigned int flashes, unsigned int delaymS);
 
+//UDF
+uint8_t GetMsgCode(uint32_t MyID);
+void EchoCode(uint8_t Code);
+void ParseCode(uint8_t MsgCode);
+uint8_t MsgCode = 0;
 void loop()
 {
-  LT.receiveRanging(RangingAddress, 0, TXpower, NO_WAIT);
-
-  endwaitmS = millis() + rangingRXTimeoutmS;
-
-  while (!digitalRead(DIO1) && (millis() <= endwaitmS));          //wait for Ranging valid or timeout
-
-  if (millis() >= endwaitmS)
-  {
-    Serial.println("Error - Ranging Receive Timeout!!");
-    led_Flash(2, 100);                                             //single flash to indicate timeout
+  LT.setupRanging(Frequency, Offset, SpreadingFactor, Bandwidth, CodeRate, RangingAddress, RANGING_SLAVE);
+  LT.ResetIRQ();
+  LT.setupLoRa(Frequency, Offset, SpreadingFactor, Bandwidth, CodeRate); 
+  MsgCode = GetMsgCode(RangingAddress);
+  if(MsgCode > 0){
+    Echo(MsgCode);
+    ParseCode(MsgCode);
   }
-  else
-  {
-    IrqStatus = LT.readIrqStatus();
-    digitalWrite(LED1, HIGH);
-
-    if (IrqStatus & IRQ_RANGING_SLAVE_RESPONSE_DONE)
-    {
-      response_sent++;
-      Serial.print(response_sent);
-      Serial.print(" Response sent");
-    }
-    else
-    {
-      Serial.print("Slave error,");
-      Serial.print(",Irq,");
-      Serial.print(IrqStatus, HEX);
-      LT.printIrqStatus();
-    }
-    digitalWrite(LED1, LOW);
-    Serial.println();
-  }
-
 }
 
 
@@ -228,3 +208,74 @@ void setup()
   Serial.println(LT.getSetCalibrationValue());           //reads the calibratuion value currently set
   delay(2000);
 }
+
+//UDF
+/////////////////////////////////////////////////////////////////////////////////////////////
+ uint8_t GetMsgCode(uint32_t MyID){
+   
+   // Will retun the Message code if valid message received for this radio ID. Else return 0. 
+   // Valid message has this structure <RadioID, MessageCode> Both RadioID and MessageCode are  integers
+    uint8_t RXPacketL;                              //stores length of packet received
+    uint8_t RXBUFFER_SIZE = 255;                    //RX buffer size
+    uint8_t RXBUFFER[RXBUFFER_SIZE];                //create the buffer that received packets are copied into
+    uint8_t TimeOut = 100;                           //RxTimeout
+   //Read buffer
+    RXPacketL = LT.receiveIRQ(RXBUFFER, RXBUFFER_SIZE, TimeOut, WAIT_RX); //wait for a packet to arrive 
+    
+    //Is mesage length > 0?
+    bool NoErr = (RXPacketL > 0);
+    
+    //In no error then Check if RSSI > -100 else return false
+    if (NoErr){
+        NoErr = NoErr and  LT.readPacketRSSI() >= -120;
+      }
+     else{
+      //if (debug){Serial.println("No message");}
+      return 0;
+     } 
+    //In no error then check if sentence structure is valid else return false
+    
+    if (NoErr){
+        NoErr = NoErr and  (char)RXBUFFER[0] == '<' and (char)RXBUFFER[RXPacketL-1] == '>';
+      }
+    else{
+      return 0;
+     } 
+    
+    if (NoErr)
+    {
+      String  MsgIn = "";
+      for (uint8_t index = 1; index < RXPacketL-1; index++){
+        MsgIn += (char)RXBUFFER[index];
+      }
+      int c1 = MsgIn.indexOf(',');       //Find first comma position
+      
+      uint32_t BeaconID = MsgIn.substring(0, c1).toInt(); //Substring counts from 0. NOTE: Strangely returns character up to position of c1-1. C1 is not included
+      uint8_t MsgCode = MsgIn.substring(c1+1).toInt();
+      
+      if(BeaconID == MyID ){
+          return MsgCode;
+        }
+      else{
+          return 0; //0 shoud not be included in code
+      }     
+    }
+    else
+    {
+      return 0;
+    } 
+  
+ }
+/////////////////////////////////////////////////////////////////////////////////////////////
+
+void EchoCode(uint8_t Code){
+  String Msg = "<0," + String(Code)+">";
+  uint8_t  TXPacketL = Msg.length() + 1;
+  char buff[TXPacketL];
+    Msg.toCharArray(buff,TXPacketL);
+    // Transmit back
+    //TXPacketL = sizeof(buff); 
+    delay(100); //Delay Needed for the Beacon as it has just sent a message and may not be ready to receive.
+    LT.transmitIRQ(buff, TXPacketL-1, 500, TXpower, WAIT_TX)
+   
+ }
