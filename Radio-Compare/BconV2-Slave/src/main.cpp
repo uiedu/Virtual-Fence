@@ -31,14 +31,17 @@ uint8_t GetMsgCode(uint32_t MyID);
 void EchoCode(uint8_t Code);
 void ParseCode(uint8_t MsgCode);
 uint8_t MsgCode = 0;
+
+
 void loop()
 {
   LT.setupRanging(Frequency, Offset, SpreadingFactor, Bandwidth, CodeRate, RangingAddress, RANGING_SLAVE);
   LT.ResetIRQ();
-  LT.setupLoRa(Frequency, Offset, SpreadingFactor, Bandwidth, CodeRate); 
+  LT.setupLoRa(Frequency, 0, LORA_SF7, LORA_BW_0400, LORA_CR_4_5); 
+ // LT.setupLoRa(Frequency, Offset, SpreadingFactor, Bandwidth, CodeRate); 
   MsgCode = GetMsgCode(RangingAddress);
   if(MsgCode > 0){
-    Echo(MsgCode);
+    EchoCode(MsgCode);
     ParseCode(MsgCode);
   }
 }
@@ -272,10 +275,14 @@ void EchoCode(uint8_t Code){
   String Msg = "<0," + String(Code)+">";
   uint8_t  TXPacketL = Msg.length() + 1;
   char buff[TXPacketL];
-    Msg.toCharArray(buff,TXPacketL);
+  Msg.toCharArray(buff,TXPacketL);
+ uint8_t *u = (uint8_t *) buff;
     // Transmit back
     //TXPacketL = sizeof(buff); 
     delay(100); //Delay Needed for the Beacon as it has just sent a message and may not be ready to receive.
-    LT.transmitIRQ(buff, TXPacketL-1, 500, TXpower, WAIT_TX)
+    LT.transmitIRQ(u, TXPacketL-1, 500, TXpower, WAIT_TX); //This did not take 
    
  }
+
+ void ParseCode(uint8_t MsgCode){
+ };

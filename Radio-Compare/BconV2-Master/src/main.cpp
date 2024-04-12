@@ -38,7 +38,7 @@ char CharIn;
 void FlashWrite(String Str);
 void FlashRead();
 uint8_t d = 10;
-
+void Broadcast(uint8_t Code);
 void loop()
 {
   /* Steps to range and record
@@ -66,6 +66,16 @@ void loop()
     
     
     //2. Range Using SX1280
+    //Request setting.
+    LT.setupLoRa(Frequency, 0, LORA_SF7, LORA_BW_0400, LORA_CR_4_5); 
+    for (int code = 0; code<100;code++){
+
+
+    }
+
+
+
+
     Msg2Write += "S,"; 
     LT.transmitRanging(RangingAddress, TXtimeoutmS, RangingTXPower, WAIT_TX);
     //delay(packet_delaymS);
@@ -259,3 +269,21 @@ String ReadCommand() { //Return the command in pair of ()
     }
     return SerialMsg;
 }
+
+
+//UDF
+void Broadcast(uint8_t Code){
+  String Msg = "<0," + String(Code)+">";
+  uint8_t  TXPacketL = Msg.length() + 1;
+  char buff[TXPacketL];
+  Msg.toCharArray(buff,TXPacketL);
+ uint8_t *u = (uint8_t *) buff;
+    // Transmit back
+    //TXPacketL = sizeof(buff); 
+    delay(100); //Delay Needed for the Beacon as it has just sent a message and may not be ready to receive.
+    LT.transmitIRQ(u, TXPacketL-1, 500, TXpower, WAIT_TX); //This did not take Char array
+   
+ }
+
+ void ParseCode(uint8_t MsgCode){
+ };

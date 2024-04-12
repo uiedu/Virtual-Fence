@@ -36,6 +36,7 @@ uint8_t SpreadingFactor = LORA_SF8;         //LoRa spreading factor
 int8_t RangingTXPower = 31;                 //Transmit power used
 uint32_t RangingAddress = 1;              //must match address in recever
 uint16_t Calibration = 11426;              //Manual Ranging calibrarion value
+int8_t TXpower = 31;                      //Transmit power used 0 to 31
 /*
   CAlibration values from applicaiton note
 __________________________________________________________________
