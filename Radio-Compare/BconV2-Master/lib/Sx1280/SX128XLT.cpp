@@ -411,13 +411,13 @@ void SX128XLT::checkBusy()
   {
     if ( ((uint32_t) (millis() - startmS) > 9))   //wait 10mS for busy to complete
     {
-      Serial.println(F("ERROR - Busy Timeout!"));
+      //Serial.println(F("ERROR - Busy Timeout!"));
       resetDevice();
       setMode(MODE_STDBY_RC);
       config();                                   //re-run saved config
       break;
     }
-  } while (digitalRead(_RFBUSY));
+  } while (digitalRead(_RFBUSY));   //My Comment: When NSS pin pulled high _RFBUSY goes high
 
 }
 #endif
@@ -2152,12 +2152,23 @@ void SX128XLT::wake()
   Serial.println(F("wake()"));
 #endif
 
-  digitalWrite(_NSS, LOW);
-  delay(1);
+  //digitalWrite(_NSS, LOW);
+  //delay(1);
   digitalWrite(_NSS, HIGH);
   delay(1);
 }
 
+void SX128XLT::Sleep()
+{
+#ifdef SX128XDEBUG
+  Serial.println(F("wake()"));
+#endif
+  
+  //digitalWrite(_NSS, LOW);
+  //delay(1);
+  digitalWrite(_NSS, HIGH);
+  delay(1);
+}
 
 int32_t SX128XLT::getFrequencyErrorRegValue()
 {

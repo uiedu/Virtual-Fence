@@ -82,6 +82,7 @@ class SX128XLT  {
     int32_t getFrequencyErrorHz();
     void printHEXByte(uint8_t temp);
     void wake();
+    void Sleep();
     uint8_t transmitAddressed(uint8_t *txbuffer, uint8_t size, char txpackettype, char txdestination, char txsource, uint32_t timeout, int8_t txpower, uint8_t wait);
     uint8_t receiveAddressed(uint8_t *rxbuffer, uint8_t size, uint16_t timeout, uint8_t wait);
     uint8_t readRXPacketType();

@@ -14,7 +14,7 @@
 #include <EEPROM.h>
 #include "Settings.h"
 
-
+//#define DEBUG
 SX128XLT LT;
 SPIFlash flash(Flashpin, expectedDeviceID);
 
@@ -37,8 +37,11 @@ char CharIn;
 //UDF definitions
 void FlashWrite(String Str);
 void FlashRead();
+String ReadCommand();
 uint8_t d = 10;
-void Broadcast(uint8_t Code);
+String MsgIn;
+void Broadcast(uint32_t RadioID, uint8_t Code);
+uint8_t GetMsgCode(uint32_t MyID);
 void loop()
 {
   /* Steps to range and record
@@ -50,58 +53,102 @@ void loop()
     
   // 1. Range using Nanotron
   for(RangingAddress = 1; RangingAddress <= Stations; RangingAddress++){
-    Msg2Write ="";
-    Msg2Write = millis();
+
+    
+    
+    Msg2Write = "Ranging: ";
+    Msg2Write += RangingAddress;
+    Msg2Write += ",";
+    Msg2Write += millis(); 
+        
     Msg2Write += "\n\r";
     Msg2Write += "N,"; 
    //Serial.println("Ranging to nanotron ID: B0" + String(RangingAddress));
    Serial2.println("RATO 0 000000000B0" + String(RangingAddress));
    delay(d);
-   Msg2Write += RangingAddress;
-   Msg2Write += ",";
-   while (Serial2.available() > 0){ 
+  
+   while (Serial2.available() > 0)
+   { 
     CharIn = Serial2.read();
     Msg2Write += CharIn;     
    }
-    
+   
     
     //2. Range Using SX1280
-    //Request setting.
-    LT.setupLoRa(Frequency, 0, LORA_SF7, LORA_BW_0400, LORA_CR_4_5); 
-    for (int code = 0; code<100;code++){
-
-
-    }
-
-
-
-
-    Msg2Write += "S,"; 
+   // LT.Sleep();
+    //digitalWrite(NSS,HIGH);
+    //digitalWrite(NSS,LOW);
+    //LT.setupLoRa(Frequency, 0, LORA_SF7, LORA_BW_0400, LORA_CR_4_5);
+    //Broadcast(RangingAddress, 123);
+   // Serial.print("Code Received: ");
+    //Serial.println(GetMsgCode(MyID));
+    LT.resetDevice();
+    LT.begin(NSS, NRESET, RFBUSY, DIO1, LORA_DEVICE);
+    LT.setupRanging(Frequency, Offset, SpreadingFactor, Bandwidth, CodeRate, RangingAddress, RANGING_MASTER);
     LT.transmitRanging(RangingAddress, TXtimeoutmS, RangingTXPower, WAIT_TX);
-    //delay(packet_delaymS);
+    delay(200);
+    
     IrqStatus = LT.readIrqStatus(); //Irqstatus is a register value true when done
-    if (IrqStatus & IRQ_RANGING_MASTER_RESULT_VALID){
-    digitalWrite(LED1, HIGH);
-    range_result = LT.getRangingResultRegValue(RANGING_RESULT_RAW);
-    if (range_result > 800000) {range_result = 0;}
-    distance = LT.getRangingDistance(RANGING_RESULT_RAW, range_result, distance_adjustment);
-    RangingRSSI = LT.getRangingRSSI();
-   
-    Msg2Write += distance;
-    Msg2Write += ",";
-    Msg2Write += RangingRSSI;
-    Msg2Write += ",";  
-    Msg2Write += Bandwidth;
-    Msg2Write += ",";
-    Msg2Write += SpreadingFactor;
-    Msg2Write += ",";
-    Msg2Write += RangingTXPower;
-    Msg2Write += ",";
-    Msg2Write += Calibration;
+    //while(LT.readIrqStatus());
+    Msg2Write += "S,"; 
+    if ( IrqStatus & IRQ_RANGING_MASTER_RESULT_VALID){
+      //digitalWrite(LED1, HIGH);
+      range_result = LT.getRangingResultRegValue(RANGING_RESULT_RAW);
+      delay(d);
+      if (range_result > 800000) {range_result = 0;}
+      distance = LT.getRangingDistance(RANGING_RESULT_RAW, range_result, distance_adjustment); //Just a calculation
+      RangingRSSI = LT.getRangingRSSI();
+    
+      Msg2Write += distance;
+      Msg2Write += ",";
+      Msg2Write += RangingRSSI;
+      Msg2Write += ",";  
+      Msg2Write += Bandwidth;
+      Msg2Write += ",";
+      Msg2Write += SpreadingFactor;
+      Msg2Write += ",";
+      Msg2Write += RangingTXPower;
+      Msg2Write += ",";
+      Msg2Write += Calibration;
+      Msg2Write += "\r\n";
     }
-    Serial.println(Msg2Write);
+    else{
+      Msg2Write += "----";
+      Msg2Write += "\r\n";
+      
+    }
+    
+    LT.setSleep(0);
+    digitalWrite(NSS,HIGH);
+    digitalWrite(Flashpin,LOW);
+    Serial.print(Msg2Write);
+    FlashWrite(Msg2Write);
+    digitalWrite(Flashpin,LOW);
+    digitalWrite(NSS,LOW);
+    digitalWrite(NSS,HIGH);
+    digitalWrite(NSS,LOW);
+    uint32_t startMS = millis();
+    while (millis() < startMS+400){
+      MsgIn = ReadCommand();
+      if (MsgIn != ""){Serial.print(MsgIn);}
+      if(MsgIn=="reset") 
+      {
+        Last_Address = 0; 
+        EEPROM.put(1,Last_Address); // EEPROM, starting Byte 1, write Last_Address which is 0 at this time. It will take 4 bytes as Last_address is Unsigend Long Integer
+        flash.chipErase(); //Erage the flash
+        while(flash.busy()); //Wait until all erased
+      }
+      else if (MsgIn=="read")
+      {
+        FlashRead();
+      }
+    //delay(500);  
+    }
+   
 
-    delay(1000);
+    
+    
+
   } 
 }
 
@@ -121,7 +168,41 @@ void led_Flash(uint16_t flashes, uint16_t delaymS)
 
 void setup()
 {
-  pinMode(LED1, OUTPUT);                                   //setup pin as output for indicator LED
+ 
+  pinMode(LED1, OUTPUT);                                      //setup pin as output for indicator LED
+  pinMode(NSS, OUTPUT);                                       ////setup NSS pin as output for radio
+  
+  pinMode(Flashpin,OUTPUT);
+                                    //setup pin as output for indicator LED
+  digitalWrite(Flashpin,HIGH);
+  digitalWrite(NSS,HIGH);                                       ////setup NSS pin as output for radio
+  digitalWrite(Flashpin,LOW);
+   //Check if falsh is ready
+  if (flash.initialize())
+  {
+    //Serial.println("Flash initilaized !");
+    led_Flash(100, 2);//Blink(int DELAY_MS, byte loops)
+  }
+  else {
+    Serial.print("Flash initialization FAIL, expectedDeviceID(0x");
+    Serial.print(expectedDeviceID, HEX);
+    Serial.print(") mismatched the read value: 0x");
+    Serial.println(flash.readDeviceId(), HEX);
+  }
+
+ // Loggin to 4Mb Flash. In order to avoid over writing writing on flash memory, the last location of memory writtten is saved in EEPROM
+ // Taking a chance that at start up, EEPROM byte 0 is not 10101010 (=170). This may happen randomly, so to make it fail safe, write EEPROM 0 to value other than 170 and clear falsh before using
+ // Most of the time this should work 
+  if (EEPROM.read(0) != 170){ //This is the first time chances are Byte 0 is not 170
+      EEPROM.write(0,0xaa);  //0xaa = 10101010
+      EEPROM.put(1,Last_Address); // EEPROM, starting Byte 1, write Last_Address which is 0 at this time. It will take 4 bytes as Last_address is Unsigend Long Integer
+      flash.chipErase(); //Erage the flash
+      while(flash.busy()); //Wait until all erased
+  }
+  else {
+      EEPROM.get(1,Last_Address);  //Byte 0 is 170, so falsh has been initialized. Read the Last_address
+  }  
+  
   led_Flash(4, 125);                                       //two quick LED flashes to indicate program start
   int d = 50; //ms delay between commands
   Serial.begin(115200);            //setup Serial 
@@ -202,25 +283,28 @@ void setup()
     }
   }
 
-
- 
-  LT.setupRanging(Frequency, Offset, SpreadingFactor, Bandwidth, CodeRate, RangingAddress, RANGING_MASTER);
-
-  delay(1000);
+ LT.setupRanging(Frequency, Offset, SpreadingFactor, Bandwidth, CodeRate, RangingAddress, RANGING_MASTER);
+ delay(d);
 }
 
 //UDFs
-void FlashWrite(String Str){
+void FlashWrite(String sMsg){
     
-    Str += "\n\n";     //Each sentence is seperated by new line character. Needs two \n as last one is discarded converting to char array
+    sMsg += "\n\n";     //Each sentence is seperated by new line character. Needs two \n as last one is discarded converting to char array
        
     if (Last_Address < 16777000){  // W25Q128JV Flash memroy 128Mbits = 16 MB = 16*2^6 = 16777216 Bytes // Rounding down to 1000
-      char msg[Str.length()]; //Copy all of it to keep one \n. str_len-1 will not copy \n
-      Str.toCharArray(msg,Str.length());
+      char cMsg[sMsg.length()]; //Copy all of it to keep one \n. str_len-1 will not copy \n
+      sMsg.toCharArray(cMsg,sMsg.length());
+      
+      digitalWrite(NSS, HIGH); // Turnoff Radio
       digitalWrite(Flashpin, LOW); // Turnon Flash
-      flash.writeBytes(Last_Address, &msg,Str.length()-1);
-      Last_Address += Str.length()-1; 
-      EEPROM.put(1, Last_Address);    
+      
+      flash.writeBytes(Last_Address, &cMsg,sMsg.length()-1);
+      Last_Address += sMsg.length()-1; 
+      EEPROM.put(1, Last_Address);   
+      digitalWrite(Flashpin, HIGH); // Turn OFF Flash
+      digitalWrite(NSS, LOW); // TurnON Radio 
+
     }
     else{
       Serial.print("Memory full");
@@ -229,14 +313,22 @@ void FlashWrite(String Str){
 
 void FlashRead(){
   Serial.print("Reading memory from address 0 to address ");
+  
   Serial.println(Last_Address);
+  digitalWrite(NSS, HIGH); // Turnoff Radio
+  digitalWrite(Flashpin, LOW); // Turnon Flash
+  
   uint32_t Counter = 0;
   for(Counter = 0; Counter < Last_Address; Counter++){
     Serial.write(flash.readByte(Counter));
   }
+   digitalWrite(Flashpin, HIGH); // Turn OFF Flash
+   digitalWrite(NSS, LOW); // TurnON Radio 
    Serial.println();
    Serial.println("Done");
+   //delay(10000);
 }
+
 
 // This function returns the command within a pair of () sent from serial port
 String ReadCommand() { //Return the command in pair of ()
@@ -251,6 +343,7 @@ String ReadCommand() { //Return the command in pair of ()
     //See if serial message is available, newCommand is false at this point
     while (Serial.available() > 0 && EndCommand == false) {
         rc = Serial.read();
+        delay(1);
 
         if (recvInProgress == true) { //recvInProgress is False when first char is read so skip this condition to Else
             if (rc != endMarker) { //Keep reading
@@ -272,8 +365,9 @@ String ReadCommand() { //Return the command in pair of ()
 
 
 //UDF
-void Broadcast(uint8_t Code){
-  String Msg = "<0," + String(Code)+">";
+void Broadcast(uint32_t RadioID, uint8_t Code){
+  String Msg = "<" + String(RadioID) + "," + String(Code)+">";
+  Serial.print(Msg);
   uint8_t  TXPacketL = Msg.length() + 1;
   char buff[TXPacketL];
   Msg.toCharArray(buff,TXPacketL);
@@ -285,5 +379,65 @@ void Broadcast(uint8_t Code){
    
  }
 
+
  void ParseCode(uint8_t MsgCode){
+  //Code for SF, BW, and Power
  };
+
+ /////////////////////////////////////////////////////////////////////////////////////////////
+ uint8_t GetMsgCode(uint32_t MyID){
+   // Check if there is message in RXBuffer and if not wait for Timeout 
+   // Will retun the Message code if valid message received for this radio ID. Else return 0. 
+   // Valid message has this structure <RadioID, MessageCode> Both RadioID and MessageCode are  integers
+    uint8_t RXPacketL;                              //stores length of packet received
+    uint8_t RXBUFFER_SIZE = 255;                    //RX buffer size
+    uint8_t RXBUFFER[RXBUFFER_SIZE];                //create the buffer that received packets are copied into
+    uint8_t TimeOut = 100;                           //RxTimeout
+   //Read buffer
+    RXPacketL = LT.receiveIRQ(RXBUFFER, RXBUFFER_SIZE, TimeOut, WAIT_RX); //wait for a packet to arrive 
+    
+    //Is mesage length > 0?
+    bool NoErr = (RXPacketL > 0);
+    
+    //In no error then Check if RSSI > -100 else return false
+    if (NoErr){
+        NoErr = NoErr and  LT.readPacketRSSI() >= -120;
+      }
+     else{
+      //if (debug){Serial.println("No message");}
+      return 0;
+     } 
+    //In no error then check if sentence structure is valid else return false
+    
+    if (NoErr){
+        NoErr = NoErr and  (char)RXBUFFER[0] == '<' and (char)RXBUFFER[RXPacketL-1] == '>';
+      }
+    else{
+      return 0;
+     } 
+    
+    if (NoErr)
+    {
+      String  MsgIn = "";
+      for (uint8_t index = 1; index < RXPacketL-1; index++){
+        MsgIn += (char)RXBUFFER[index];
+      }
+      int c1 = MsgIn.indexOf(',');       //Find first comma position
+      
+      uint32_t BeaconID = MsgIn.substring(0, c1).toInt(); //Substring counts from 0. NOTE: Strangely returns character up to position of c1-1. C1 is not included
+      uint8_t MsgCode = MsgIn.substring(c1+1).toInt();
+      
+      if(BeaconID == MyID ){
+          return MsgCode;
+        }
+      else{
+          return 0; //0 shoud not be included in code
+      }     
+    }
+    else
+    {
+      return 0;
+    } 
+  
+ }
+/////////////////////////////////////////////////////////////////////////////////////////////
