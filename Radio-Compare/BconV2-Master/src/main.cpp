@@ -56,7 +56,7 @@ void loop()
 
     
     
-    Msg2Write = "Ranging: ";
+    Msg2Write = "R,";
     Msg2Write += RangingAddress;
     Msg2Write += ",";
     Msg2Write += millis(); 
@@ -70,10 +70,28 @@ void loop()
    while (Serial2.available() > 0)
    { 
     CharIn = Serial2.read();
-    Msg2Write += CharIn;     
+    if (CharIn != '=' &&  CharIn != '\r' && CharIn != '\n' ){Msg2Write += CharIn;  }     
    }
    
-    
+   //Get temperature and battery
+   Serial2.println("GMYT");
+   delay(d);
+   Msg2Write += ",";
+   while (Serial2.available() > 0)
+   { 
+    CharIn = Serial2.read();
+    if (CharIn != '=' &&  CharIn != '\r' && CharIn != '\n' ){Msg2Write += CharIn;  }
+       
+   }
+   Serial2.println("GBAT");
+   delay(d);
+   Msg2Write += ",";
+   while (Serial2.available() > 0)
+   { 
+    CharIn = Serial2.read();
+    if (CharIn != '=' ){Msg2Write += CharIn;  }     
+   }
+
     //2. Range Using SX1280
    // LT.Sleep();
     //digitalWrite(NSS,HIGH);
@@ -82,53 +100,57 @@ void loop()
     //Broadcast(RangingAddress, 123);
    // Serial.print("Code Received: ");
     //Serial.println(GetMsgCode(MyID));
-    LT.resetDevice();
+    //LT.resetDevice();
     LT.begin(NSS, NRESET, RFBUSY, DIO1, LORA_DEVICE);
+    delay(1000);
     LT.setupRanging(Frequency, Offset, SpreadingFactor, Bandwidth, CodeRate, RangingAddress, RANGING_MASTER);
-    LT.transmitRanging(RangingAddress, TXtimeoutmS, RangingTXPower, WAIT_TX);
-    delay(200);
+    delay(1000);
+    for (RangingTXPower = 0; RangingTXPower<32; RangingTXPower+=5)
+    {
+      LT.transmitRanging(RangingAddress, TXtimeoutmS, RangingTXPower, WAIT_TX);
+      delay(1000);
+      
+      IrqStatus = LT.readIrqStatus(); //Irqstatus is a register value true when done
+      //while(LT.readIrqStatus());
+      Msg2Write += "S,"; 
+      if ( IrqStatus & IRQ_RANGING_MASTER_RESULT_VALID){
+        //digitalWrite(LED1, HIGH);
+        range_result = LT.getRangingResultRegValue(RANGING_RESULT_RAW);
+        delay(d);
+        if (range_result > 800000) {range_result = 0;}
+        distance = LT.getRangingDistance(RANGING_RESULT_RAW, range_result, distance_adjustment); //Just a calculation
+        RangingRSSI = LT.getRangingRSSI();
+      
+        Msg2Write += distance;
+        Msg2Write += ",";
+        Msg2Write += RangingRSSI;
+        Msg2Write += ",";  
+        Msg2Write += Bandwidth;
+        Msg2Write += ",";
+        Msg2Write += SpreadingFactor;
+        Msg2Write += ",";
+        Msg2Write += RangingTXPower;
+        Msg2Write += ",";
+        Msg2Write += Calibration;
+        Msg2Write += "\r\n";
+      }
+      else{
+        Msg2Write += "----";
+        Msg2Write += "\r\n";
+        
+      }
+      
+    }  
+      
+      Serial.print(Msg2Write);
+      FlashWrite(Msg2Write);
+      
     
-    IrqStatus = LT.readIrqStatus(); //Irqstatus is a register value true when done
-    //while(LT.readIrqStatus());
-    Msg2Write += "S,"; 
-    if ( IrqStatus & IRQ_RANGING_MASTER_RESULT_VALID){
-      //digitalWrite(LED1, HIGH);
-      range_result = LT.getRangingResultRegValue(RANGING_RESULT_RAW);
-      delay(d);
-      if (range_result > 800000) {range_result = 0;}
-      distance = LT.getRangingDistance(RANGING_RESULT_RAW, range_result, distance_adjustment); //Just a calculation
-      RangingRSSI = LT.getRangingRSSI();
     
-      Msg2Write += distance;
-      Msg2Write += ",";
-      Msg2Write += RangingRSSI;
-      Msg2Write += ",";  
-      Msg2Write += Bandwidth;
-      Msg2Write += ",";
-      Msg2Write += SpreadingFactor;
-      Msg2Write += ",";
-      Msg2Write += RangingTXPower;
-      Msg2Write += ",";
-      Msg2Write += Calibration;
-      Msg2Write += "\r\n";
-    }
-    else{
-      Msg2Write += "----";
-      Msg2Write += "\r\n";
       
     }
-    
-    LT.setSleep(0);
-    digitalWrite(NSS,HIGH);
-    digitalWrite(Flashpin,LOW);
-    Serial.print(Msg2Write);
-    FlashWrite(Msg2Write);
-    digitalWrite(Flashpin,LOW);
-    digitalWrite(NSS,LOW);
-    digitalWrite(NSS,HIGH);
-    digitalWrite(NSS,LOW);
     uint32_t startMS = millis();
-    while (millis() < startMS+400){
+    while (millis() < startMS+300000){
       MsgIn = ReadCommand();
       if (MsgIn != ""){Serial.print(MsgIn);}
       if(MsgIn=="reset") 
@@ -137,19 +159,20 @@ void loop()
         EEPROM.put(1,Last_Address); // EEPROM, starting Byte 1, write Last_Address which is 0 at this time. It will take 4 bytes as Last_address is Unsigend Long Integer
         flash.chipErase(); //Erage the flash
         while(flash.busy()); //Wait until all erased
+        Serial.println();
+        Serial.println("Reset Done");
       }
       else if (MsgIn=="read")
       {
         FlashRead();
       }
-    //delay(500);  
-    }
+  }
    
 
     
     
 
-  } 
+   
 }
 
 void led_Flash(uint16_t flashes, uint16_t delaymS)
@@ -301,7 +324,8 @@ void FlashWrite(String sMsg){
       
       flash.writeBytes(Last_Address, &cMsg,sMsg.length()-1);
       Last_Address += sMsg.length()-1; 
-      EEPROM.put(1, Last_Address);   
+      EEPROM.put(1, Last_Address);  
+
       digitalWrite(Flashpin, HIGH); // Turn OFF Flash
       digitalWrite(NSS, LOW); // TurnON Radio 
 
@@ -324,8 +348,9 @@ void FlashRead(){
   }
    digitalWrite(Flashpin, HIGH); // Turn OFF Flash
    digitalWrite(NSS, LOW); // TurnON Radio 
+   
    Serial.println();
-   Serial.println("Done");
+   Serial.println(" Reading Done");
    //delay(10000);
 }
 

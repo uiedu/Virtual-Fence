@@ -36,8 +36,8 @@ uint8_t MsgCode = 0;
 void loop()
 {
   
-  LT.setupRanging(Frequency, Offset, SpreadingFactor, Bandwidth, CodeRate, RangingAddress, RANGING_SLAVE);
-  delay(1);
+  //LT.setupRanging(Frequency, Offset, SpreadingFactor, Bandwidth, CodeRate, RangingAddress, RANGING_SLAVE);
+  //delay(1);
   LT.ResetIRQ();
   delay(1);
   /*LT.setupLoRa(Frequency, 0, LORA_SF7, LORA_BW_0400, LORA_CR_4_5); 
@@ -71,8 +71,8 @@ void setup()
 {
   pinMode(LED1, OUTPUT);                                      //setup pin as output for indicator LED
   pinMode(NSS, OUTPUT);                                       ////setup NSS pin as output for radio
-  
   pinMode(Flashpin,OUTPUT);                                  //setup pin as output for indicator LED
+  
   digitalWrite(Flashpin,HIGH); 
   /* 
   Setting up the Radio Beacons (Use BeaconV2-Slave to configure)
@@ -219,7 +219,7 @@ void setup()
 
   Serial.print(F("Calibration,"));
   Serial.println(LT.getSetCalibrationValue());           //reads the calibratuion value currently set
-  delay(1000);
+  delay(2000);
 }
 
 //UDF
