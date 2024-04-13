@@ -102,13 +102,13 @@ void loop()
     //Serial.println(GetMsgCode(MyID));
     //LT.resetDevice();
     LT.begin(NSS, NRESET, RFBUSY, DIO1, LORA_DEVICE);
-    delay(1000);
+    
     LT.setupRanging(Frequency, Offset, SpreadingFactor, Bandwidth, CodeRate, RangingAddress, RANGING_MASTER);
-    delay(1000);
+    delay(2000);
     for (RangingTXPower = 0; RangingTXPower<32; RangingTXPower+=5)
     {
       LT.transmitRanging(RangingAddress, TXtimeoutmS, RangingTXPower, WAIT_TX);
-      delay(1000);
+      delay(100);
       
       IrqStatus = LT.readIrqStatus(); //Irqstatus is a register value true when done
       //while(LT.readIrqStatus());
@@ -150,7 +150,7 @@ void loop()
       
     }
     uint32_t startMS = millis();
-    while (millis() < startMS+300000){
+    while (millis() < startMS+300){
       MsgIn = ReadCommand();
       if (MsgIn != ""){Serial.print(MsgIn);}
       if(MsgIn=="reset") 

@@ -14,7 +14,7 @@ uint16_t expectedDeviceID = 0xEF40;
 uint32_t Last_Address = 0;
 /// ///////
 String Msg2Write;
-uint8_t Stations = 6;
+uint8_t Stations = 1;
 uint32_t MyID = 0;
 //*******  Setup hardware pin definitions here ! ***************
 

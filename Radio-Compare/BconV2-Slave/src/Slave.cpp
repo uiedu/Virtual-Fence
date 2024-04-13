@@ -36,18 +36,43 @@ uint8_t MsgCode = 0;
 void loop()
 {
   
-  //LT.setupRanging(Frequency, Offset, SpreadingFactor, Bandwidth, CodeRate, RangingAddress, RANGING_SLAVE);
-  //delay(1);
+  /*
   LT.ResetIRQ();
   delay(1);
-  /*LT.setupLoRa(Frequency, 0, LORA_SF7, LORA_BW_0400, LORA_CR_4_5); 
- // LT.setupLoRa(Frequency, Offset, SpreadingFactor, Bandwidth, CodeRate); 
-  MsgCode = GetMsgCode(RangingAddress);
-  if(MsgCode > 0){
-    EchoCode(MsgCode);
-    ParseCode(MsgCode);
-  }
    */ 
+  LT.receiveRanging(RangingAddress, 0, TXpower, NO_WAIT);
+
+  endwaitmS = millis() + rangingRXTimeoutmS;
+
+  while (!digitalRead(DIO1) && (millis() <= endwaitmS));          //wait for Ranging valid or timeout
+
+  if (millis() >= endwaitmS)
+  {
+    Serial.println("Error - Ranging Receive Timeout!!");
+    led_Flash(2, 100);                                             //single flash to indicate timeout
+  }
+  else
+  {
+    IrqStatus = LT.readIrqStatus();
+    digitalWrite(LED1, HIGH);
+
+    if (IrqStatus & IRQ_RANGING_SLAVE_RESPONSE_DONE)
+    {
+      response_sent++;
+      Serial.print(response_sent);
+      Serial.print(" Response sent");
+    }
+    else
+    {
+      Serial.print("Slave error,");
+      Serial.print(",Irq,");
+      Serial.print(IrqStatus, HEX);
+      LT.printIrqStatus();
+    }
+    digitalWrite(LED1, LOW);
+    Serial.println();
+  }
+
   
 }
 
