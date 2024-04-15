@@ -3388,18 +3388,19 @@ bool SX128XLT::transmitRanging(uint32_t address, uint16_t timeout, int8_t txpowe
   }
 }
 
-
+//Used in main with 4 parameters
 uint8_t SX128XLT::receiveRanging(uint32_t address, uint16_t timeout, int8_t txpower, uint8_t wait)
 {
 #ifdef SX128XDEBUG
   Serial.println(F("receiveRanging()"));
 #endif
 
-  setTxParams(txpower, RADIO_RAMP_02_US);
-  setRangingSlaveAddress(address);
+  //setTxParams(txpower, RADIO_RAMP_02_US);
+  //setRangingSlaveAddress(address);
   setDioIrqParams(IRQ_RADIO_ALL, (IRQ_RANGING_SLAVE_RESPONSE_DONE + IRQ_RANGING_SLAVE_REQUEST_DISCARDED + IRQ_HEADER_ERROR), 0, 0);
   setRx(timeout);
-
+  return NO_WAIT; 
+/*
   if (!wait)
   {
     return NO_WAIT;                                          //not wait requested so no packet length to pass
@@ -3417,6 +3418,7 @@ uint8_t SX128XLT::receiveRanging(uint32_t address, uint16_t timeout, int8_t txpo
   {
     return false;                                            //so we can check for packet having enough buffer space
   }
+  */
 }
 
 
@@ -5951,7 +5953,7 @@ uint8_t SX128XLT::sendACKDTIRQ(uint8_t *header, uint8_t headersize, int8_t txpow
   return _TXPacketL;                                                         //TX OK so return TXpacket length
 }
 
-
+//UDF
 
 uint16_t SX128XLT::GetCalibration(int BW, int SF)
 {
@@ -5967,6 +5969,21 @@ uint16_t SX128XLT::GetCalibration(int BW, int SF)
   else{ return 0;}
   
 };
+
+void SX128XLT::ResetIRQ()
+{
+  setDioIrqParams(IRQ_RADIO_ALL, (IRQ_RANGING_SLAVE_RESPONSE_DONE + IRQ_RANGING_SLAVE_REQUEST_DISCARDED + IRQ_HEADER_ERROR), 0, 0);
+  setRx(0);
+  while (!digitalRead(_DIO1) ); 
+  
+};
+
+bool SX128XLT::NewMessage()
+{
+ return false; 
+}
+
+
 /*
   MIT license
 

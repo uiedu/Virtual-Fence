@@ -91,6 +91,8 @@ class SX128XLT  {
 
     //Dev's Funciton
     uint16_t GetCalibration(int BW, int SF);
+    void ResetIRQ();
+    bool NewMessage();
 
 
     //***************************************************************************

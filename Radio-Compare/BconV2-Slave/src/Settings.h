@@ -8,9 +8,13 @@
   
 *******************************************************************************************************/
 // Set Station ID
-uint32_t RangingAddress = 1;         //must match address in master (Single didgit only for now, Generalize to have any number)
+uint32_t RangingAddress = 5;         //must match address in master (Single didgit only for now, Generalize to have any number)
 String radioID = "000000000B0" + String(RangingAddress);  // 9 0s followed by B01 to Bxx
 
+// Flash memory 
+#define Flashpin         21				// Flash memory SS pin
+uint16_t expectedDeviceID = 0xEF40;
+uint32_t Last_Address = 0;
 
 //  Sx1280 Experimental settings
 uint8_t Bandwidth = LORA_BW_0800;    //LoRa bandwidth
