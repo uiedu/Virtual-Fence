@@ -1,0 +1,58 @@
+//
+// !!! WARNING !!! AUTO-GENERATED FILE!
+// PLEASE DO NOT MODIFY IT AND USE "platformio.ini":
+// https://docs.platformio.org/page/projectconf/section_env_build.html#build-flags
+//
+{
+    "configurations": [
+        {
+            "name": "PlatformIO",
+            "includePath": [
+                "d:/OneDrive - University of Idaho/Documents/PlatformIO/Virtual-Fence-1/Radio-Compare/BconV2-Slave/include",
+                "d:/OneDrive - University of Idaho/Documents/PlatformIO/Virtual-Fence-1/Radio-Compare/BconV2-Slave/src",
+                "d:/OneDrive - University of Idaho/Documents/PlatformIO/Virtual-Fence-1/Radio-Compare/BconV2-Slave/lib/Sx1280",
+                "C:/Users/devs/.platformio/packages/framework-arduino-avr/libraries/SPI/src",
+                "C:/Users/devs/.platformio/packages/framework-arduino-avr/cores/arduino",
+                "C:/Users/devs/.platformio/packages/framework-arduino-avr/variants/mega",
+                "C:/Users/devs/.platformio/packages/framework-arduino-avr/libraries/EEPROM/src",
+                "C:/Users/devs/.platformio/packages/framework-arduino-avr/libraries/HID/src",
+                "C:/Users/devs/.platformio/packages/framework-arduino-avr/libraries/SoftwareSerial/src",
+                "C:/Users/devs/.platformio/packages/framework-arduino-avr/libraries/Wire/src",
+                ""
+            ],
+            "browse": {
+                "limitSymbolsToIncludedHeaders": true,
+                "path": [
+                    "d:/OneDrive - University of Idaho/Documents/PlatformIO/Virtual-Fence-1/Radio-Compare/BconV2-Slave/include",
+                    "d:/OneDrive - University of Idaho/Documents/PlatformIO/Virtual-Fence-1/Radio-Compare/BconV2-Slave/src",
+                    "d:/OneDrive - University of Idaho/Documents/PlatformIO/Virtual-Fence-1/Radio-Compare/BconV2-Slave/lib/Sx1280",
+                    "C:/Users/devs/.platformio/packages/framework-arduino-avr/libraries/SPI/src",
+                    "C:/Users/devs/.platformio/packages/framework-arduino-avr/cores/arduino",
+                    "C:/Users/devs/.platformio/packages/framework-arduino-avr/variants/mega",
+                    "C:/Users/devs/.platformio/packages/framework-arduino-avr/libraries/EEPROM/src",
+                    "C:/Users/devs/.platformio/packages/framework-arduino-avr/libraries/HID/src",
+                    "C:/Users/devs/.platformio/packages/framework-arduino-avr/libraries/SoftwareSerial/src",
+                    "C:/Users/devs/.platformio/packages/framework-arduino-avr/libraries/Wire/src",
+                    ""
+                ]
+            },
+            "defines": [
+                "PLATFORMIO=60114",
+                "ARDUINO_AVR_MEGA2560",
+                "F_CPU=16000000L",
+                "ARDUINO_ARCH_AVR",
+                "ARDUINO=10808",
+                "__AVR_ATmega2560__",
+                ""
+            ],
+            "cStandard": "gnu11",
+            "cppStandard": "gnu++11",
+            "compilerPath": "C:/Users/devs/.platformio/packages/toolchain-atmelavr/bin/avr-gcc.exe",
+            "compilerArgs": [
+                "-mmcu=atmega2560",
+                ""
+            ]
+        }
+    ],
+    "version": 4
+}

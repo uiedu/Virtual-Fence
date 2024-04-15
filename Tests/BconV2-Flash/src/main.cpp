@@ -54,10 +54,10 @@ void setup(){
  // Taking a chance that at start up, EEPROM byte 0 is not 10101010 (=170). This may happen randomly, so to make it fail safe, write EEPROM 0 to value other than 170 and clear falsh before using
  // Most of the time this should work 
   if (EEPROM.read(0) != 170){ //This is the first time chances are Byte 0 is not 170
-      EEPROM.write(0,0xaa);  //0xaa = 10101010
-      EEPROM.put(1,Last_Address); // EEPROM, starting Byte 1, write Last_Address which is 0 at this time. It will take 4 bytes as Last_address is Unsigend Long Integer
-      flash.chipErase(); //Erage the flash
-      while(flash.busy()); //Wait until all erased
+      //EEPROM.write(0,0xaa);  //0xaa = 10101010
+      //EEPROM.put(1,Last_Address); // EEPROM, starting Byte 1, write Last_Address which is 0 at this time. It will take 4 bytes as Last_address is Unsigend Long Integer
+      //flash.chipErase(); //Erage the flash
+      //while(flash.busy()); //Wait until all erased
   }
   else {
       EEPROM.get(1,Last_Address);  //Byte 0 is 170, so falsh has been initialized. Read the Last_address
@@ -67,10 +67,10 @@ void setup(){
 }
 
 void loop(){
-  FlashWrite();
-  delay(1000);
+  //FlashWrite();
+  //delay(1000);
   FlashRead();
-  delay(1000);
+  delay(10000);
 }
 
 
