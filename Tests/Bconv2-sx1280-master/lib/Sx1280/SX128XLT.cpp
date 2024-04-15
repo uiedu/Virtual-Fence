@@ -409,14 +409,18 @@ void SX128XLT::checkBusy()
 
   do
   {
+    
     if ( ((uint32_t) (millis() - startmS) > 9))   //wait 10mS for busy to complete
     {
-      Serial.println(F("ERROR - Busy Timeout!"));
+      //If other devices such as Flash Memory are using spi, comment this block
+      //Otherwise for as soon as NSS pin goes high, _RFBUSY is true and the device resets. This requre reinitializing the radio and resetting to desired setting.
+      Serial.println(F("ERROR - Busy Timeout!")); 
       resetDevice();
       setMode(MODE_STDBY_RC);
-      config();                                   //re-run saved config
+      config();                                   //re-run saved config /* */
       break;
     }
+   
   } while (digitalRead(_RFBUSY));
 
 }

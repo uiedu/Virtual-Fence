@@ -15,6 +15,14 @@
 
 SX128XLT LT;
 
+// Add Flash
+#include <SPIFlash.h>    //get it here: https://github.com/LowPowerLab/SPIFlash
+#include <EEPROM.h>
+#define Flashpin         21				// Flash memory SS pin
+uint16_t expectedDeviceID = 0xEF40;
+uint32_t Last_Address = 0;
+SPIFlash flash(Flashpin, expectedDeviceID);
+
 /* Comment 01
 #ifdef ENABLEOLED
 #include <U8x8lib.h>                                        //https://github.com/olikraus/u8g2 
@@ -29,6 +37,12 @@ float distance, distance_sum, distance_average;
 bool ranging_error;
 int32_t range_result;
 int16_t RangingRSSI;
+
+//UDF definitions
+void FlashWrite(String Str);
+void FlashRead();
+String MsgIn;
+String ReadCommand();
 
 
 void loop()
@@ -110,11 +124,29 @@ void loop()
       Serial.print(range_result_average);
       Serial.print(F(",AverageDistance,"));
       Serial.print(distance_average, 1);
-/* Comment 2
-#ifdef ENABLEDISPLAY
-      display_screen1();
-#endif
-*/
+      /*
+      FlashWrite(String(distance_average));
+      
+      uint32_t startMS = millis();
+      while (millis() < startMS+300){
+        MsgIn = ReadCommand();
+        if (MsgIn != ""){Serial.print(MsgIn);}
+        if(MsgIn=="reset") 
+        {
+          Last_Address = 0; 
+          EEPROM.put(1,Last_Address); // EEPROM, starting Byte 1, write Last_Address which is 0 at this time. It will take 4 bytes as Last_address is Unsigend Long Integer
+          flash.chipErase(); //Erage the flash
+          while(flash.busy()); //Wait until all erased
+          Serial.println();
+          Serial.println("Reset Done");
+        }
+        else if (MsgIn=="read")
+        {
+          FlashRead();
+        }
+      }
+      */
+
       delay(2000);
 
     }
@@ -122,27 +154,7 @@ void loop()
   }
 
 }
-/* Comment 3
-#ifdef ENABLEDISPLAY
-void display_screen1()
-{
-  disp.clear();
-  disp.setCursor(0, 0);
-  disp.print(F("Distance "));
-  disp.print(distance_average, 1);
-  disp.print(F("m"));
-  disp.setCursor(0, 2);
-  disp.print(F("RSSI "));
-  disp.print(RangingRSSI);
-  disp.print(F("dBm"));
-  disp.setCursor(0, 4);
-  disp.print(F("OK,"));
-  disp.print(rangeings_valid);
-  disp.print(F(",Err,"));
-  disp.print(rangeing_errors);
-}
-#endif
-*/
+
 
 void led_Flash(uint16_t flashes, uint16_t delaymS)
 {
@@ -160,15 +172,46 @@ void led_Flash(uint16_t flashes, uint16_t delaymS)
 
 void setup()
 {
-  pinMode(LED1, OUTPUT);                                   //setup pin as output for indicator LED
-  led_Flash(4, 125);                                       //two quick LED flashes to indicate program start
-  pinMode(21,OUTPUT);
-  digitalWrite(21,HIGH);
   Serial.begin(115200);   //Original 9600
+  
+  pinMode(LED1, OUTPUT);                                      //setup pin as output for indicator LED
+  pinMode(NSS, OUTPUT);                                       ////setup NSS pin as output for radio
+  pinMode(Flashpin,OUTPUT);
+                                    //setup pin as output for indicator LED
+  
+  digitalWrite(NSS,HIGH);                                       ////setup NSS pin as output for radio
+  digitalWrite(Flashpin,LOW);
+   //Check if falsh is ready
+  if (flash.initialize())
+  {
+    //Serial.println("Flash initilaized !");
+    led_Flash(100, 2);//Blink(int DELAY_MS, byte loops)
+  }
+  else {
+    Serial.print("Flash initialization FAIL, expectedDeviceID(0x");
+    Serial.print(expectedDeviceID, HEX);
+    Serial.print(") mismatched the read value: 0x");
+    Serial.println(flash.readDeviceId(), HEX);
+  }
+
+ // Loggin to 4Mb Flash. In order to avoid over writing writing on flash memory, the last location of memory writtten is saved in EEPROM
+ // Taking a chance that at start up, EEPROM byte 0 is not 10101010 (=170). This may happen randomly, so to make it fail safe, write EEPROM 0 to value other than 170 and clear falsh before using
+ // Most of the time this should work 
+  if (EEPROM.read(0) != 170){ //This is the first time chances are Byte 0 is not 170
+      EEPROM.write(0,0xaa);  //0xaa = 10101010
+      EEPROM.put(1,Last_Address); // EEPROM, starting Byte 1, write Last_Address which is 0 at this time. It will take 4 bytes as Last_address is Unsigend Long Integer
+      flash.chipErase(); //Erage the flash
+      while(flash.busy()); //Wait until all erased
+  }
+  else {
+      EEPROM.get(1,Last_Address);  //Byte 0 is 170, so falsh has been initialized. Read the Last_address
+  } 
+ 
+  
   Serial.println();
   Serial.println(F("54_Ranging_Master Starting"));
 
-  SPI.begin();
+  //SPI.begin();
 
   led_Flash(2, 125);
 
@@ -228,3 +271,81 @@ void setup()
 
   delay(2000);
 }
+
+//UDFs
+void FlashWrite(String sMsg){
+    
+    sMsg += "\n\n";     //Each sentence is seperated by new line character. Needs two \n as last one is discarded converting to char array
+       
+    if (Last_Address < 16777000){  // W25Q128JV Flash memroy 128Mbits = 16 MB = 16*2^6 = 16777216 Bytes // Rounding down to 1000
+      char cMsg[sMsg.length()]; //Copy all of it to keep one \n. str_len-1 will not copy \n
+      sMsg.toCharArray(cMsg,sMsg.length());
+      
+      digitalWrite(NSS, HIGH); // Turnoff Radio
+      digitalWrite(Flashpin, LOW); // Turnon Flash
+      
+      flash.writeBytes(Last_Address, &cMsg,sMsg.length()-1);
+      Last_Address += sMsg.length()-1; 
+      EEPROM.put(1, Last_Address);  
+
+      digitalWrite(Flashpin, HIGH); // Turn OFF Flash
+      digitalWrite(NSS, LOW); // TurnON Radio 
+
+    }
+    else{
+      Serial.print("Memory full");
+    }
+}  
+
+void FlashRead(){
+  Serial.print("Reading memory from address 0 to address ");
+  
+  Serial.println(Last_Address);
+  digitalWrite(NSS, HIGH); // Turnoff Radio
+  digitalWrite(Flashpin, LOW); // Turnon Flash
+  
+  uint32_t Counter = 0;
+  for(Counter = 0; Counter < Last_Address; Counter++){
+    Serial.write(flash.readByte(Counter));
+  }
+   digitalWrite(Flashpin, HIGH); // Turn OFF Flash
+   digitalWrite(NSS, LOW); // TurnON Radio 
+   
+   Serial.println();
+   Serial.println(" Reading Done");
+   //delay(10000);
+}
+
+// This function returns the command within a pair of () sent from serial port
+String ReadCommand() { //Return the command in pair of ()
+// This is a better code to ensure commnd from serial is read properly 
+// All command starts with ( and end with )
+    static bool recvInProgress = false; //Static is necessary not to terminte reading at the middle of the line
+    char startMarker = '(';
+    char endMarker = ')';
+    char rc;
+    String SerialMsg ="";
+    bool EndCommand = false;
+    //See if serial message is available, newCommand is false at this point
+    while (Serial.available() > 0 && EndCommand == false) {
+        rc = Serial.read();
+        delay(1);
+
+        if (recvInProgress == true) { //recvInProgress is False when first char is read so skip this condition to Else
+            if (rc != endMarker) { //Keep reading
+                SerialMsg += rc;
+            }
+            else { //End marked found
+                recvInProgress = false;
+                EndCommand = true;
+            }
+        }
+
+        else if (rc == startMarker) { //No need to read until start marker is found
+            SerialMsg = ""; //Start marker found get ready to read
+            recvInProgress = true;
+        }
+    }
+    return SerialMsg;
+}
+

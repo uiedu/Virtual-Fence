@@ -37,9 +37,10 @@ char CharIn;
 //UDF definitions
 void FlashWrite(String Str);
 void FlashRead();
+String MsgIn;
 String ReadCommand();
 uint8_t d = 10;
-String MsgIn;
+
 void Broadcast(uint32_t RadioID, uint8_t Code);
 uint8_t GetMsgCode(uint32_t MyID);
 void loop()
@@ -166,7 +167,7 @@ void loop()
       {
         FlashRead();
       }
-  }
+    }
    
 
     
