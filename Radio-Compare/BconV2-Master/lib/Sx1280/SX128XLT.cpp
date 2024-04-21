@@ -411,7 +411,7 @@ void SX128XLT::checkBusy()
   {
     if ( ((uint32_t) (millis() - startmS) > 9))   //wait 10mS for busy to complete
     {
-      //Serial.println(F("ERROR - Busy Timeout!"));
+      Serial.println(F("ERROR - Busy Timeout!"));
       resetDevice();
       setMode(MODE_STDBY_RC);
       config();                                   //re-run saved config
@@ -3399,7 +3399,7 @@ bool SX128XLT::transmitRanging(uint32_t address, uint16_t timeout, int8_t txpowe
   }
 }
 
-
+// This is the one called with 4 parameters from Stuart's code
 uint8_t SX128XLT::receiveRanging(uint32_t address, uint16_t timeout, int8_t txpower, uint8_t wait)
 {
 #ifdef SX128XDEBUG

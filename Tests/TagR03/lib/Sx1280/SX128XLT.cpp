@@ -411,7 +411,7 @@ void SX128XLT::checkBusy()
   {
     if ( ((uint32_t) (millis() - startmS) > 9))   //wait 10mS for busy to complete
     {
-      //Serial.println(F("ERROR - Busy Timeout!"));
+      Serial.println(F("ERROR - Busy Timeout!"));
       resetDevice();
       setMode(MODE_STDBY_RC);
       config();                                   //re-run saved config

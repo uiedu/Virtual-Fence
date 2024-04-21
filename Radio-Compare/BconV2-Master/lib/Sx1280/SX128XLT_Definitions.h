@@ -6,9 +6,9 @@
 //*************************************************************
 //
 //LoRa spreading factors
-#define LORA_SF5      0x50
-#define LORA_SF6      0x60
-#define LORA_SF7      0x70
+#define LORA_SF5      0x50  //80
+#define LORA_SF6      0x60  //96
+#define LORA_SF7      0x70  //112
 #define LORA_SF8      0x80
 #define LORA_SF9      0x90
 #define LORA_SF10     0xA0
@@ -404,11 +404,27 @@
 #define CalibrationSF10BW400                        10180     //calibration value for ranging, SF10, BW400
 #define CalibrationSF5BW1600                        13100     //calibration value for ranging, SF5, BW1600
 
+/*
+  CAlibration values from applicaiton note
+__________________________________________________________________
+                                           SF
+                  ------------------------------------------------          
+                    5       6       7       8       9       10
+                  ------------------------------------------------  
+         | 400   |  10299   10271   10244   10242   10230   10246
+  BW(kHz)| 800   |  11486   11474   11453   11426   11417   11401 
+         | 1600  |  13308   13493   13528   13515   13430   13376
+______________________________________________________________________  
 
-const uint16_t RNG_CALIB_0400[] = { 10260,  10244,  10228,  10212,  10196,  10180  };   //SF5 to SF10
-const uint16_t RNG_CALIB_0800[] = { 11380,  11370,  11360,  11350,  11340,  11330  };
-const uint16_t RNG_CALIB_1600[] = { 13100,  13160,  13220,  13280,  13340,  13400  };
+*/
+const uint16_t RNG_CALIB_0400[] = { 10299,   10271,   10244,   10242,   10230,   10246  };   //SF5 to SF10
+const uint16_t RNG_CALIB_0800[] = { 11486,   11474,   11453,   11426,   11417,   11401  };
+const uint16_t RNG_CALIB_1600[] = { 13308,   13493,   13528,   13515,   13430,   13376  };
 
+
+/* Stuart's values
+
+*/
 
 //These are the bit numbers which when set indicate reliable errors, variable _ReliableErrors
 #define ReliableCRCError 0x00             //bit number set in _ReliableErrors when there is a reliable CRC missmatch

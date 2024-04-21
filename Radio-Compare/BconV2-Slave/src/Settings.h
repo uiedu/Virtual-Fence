@@ -7,19 +7,11 @@
 
   
 *******************************************************************************************************/
-// Set Station ID
-uint32_t RangingAddress = 5;         //must match address in master (Single didgit only for now, Generalize to have any number)
-String radioID = "000000000B0" + String(RangingAddress);  // 9 0s followed by B01 to Bxx
-
-// Flash memory 
-#define Flashpin         21				// Flash memory SS pin
-uint16_t expectedDeviceID = 0xEF40;
-uint32_t Last_Address = 0;
 
 //  Sx1280 Experimental settings
 uint8_t Bandwidth = LORA_BW_0800;    //LoRa bandwidth
 uint8_t SpreadingFactor = LORA_SF8;  //LoRa spreading factor
-int8_t TXpower = 31;                 //Transmit power used 0 to 31
+int8_t RangingTXPower = 10;                 //Transmit power used 0 to 31
 uint16_t Calibration = 11426;        //Ranging calibrarion value from table below or from manual calibration for better results
 /*  Calibration values from applicaiton note
 __________________________________________________________________
@@ -41,12 +33,25 @@ ______________________________________________________________________*/
 #define NSS 10
 #define RFBUSY 7
 #define NRESET 9
-#define LED1 8
 #define DIO1 5
 #define LORA_DEVICE DEVICE_SX1280                //we need to define the device we are using
+
+//Board LEDs
+#define LED1 30 //defined as output in beaconinit
+#define LED2 31//defined as output in beaconinit
+#define LED3 32//defined as output in beaconinit
+#define LED4 33//defined as output in beaconinit
+#define LED5 34//defined as output in beaconinit
 
 //LoRa Modem Parameters
 const uint32_t Frequency = 2445000000;           //frequency of transmissions in hz
 const int32_t Offset = 0;                        //offset frequency in hz for calibration purposes
 const uint8_t CodeRate = LORA_CR_4_5;            //LoRa coding rate
-const uint16_t  rangingRXTimeoutmS = 0xFFFF;     //ranging RX timeout in mS
+const uint16_t  rangingRXTimeoutmS = 0x00FF;     //ranging RX timeout in mS
+
+//LoRa Modem Constant Parameters
+const uint16_t  waittimemS = 10000;              //wait this long in mS for packet before assuming timeout
+const uint16_t  TXtimeoutmS = 5000;              //ranging TX timeout in mS
+const uint16_t  packet_delaymS = 0;              //forced extra delay in mS between ranging requests
+const uint16_t  rangeingcount = 1;               //number of times ranging is carried out for each distance measurment
+float distance_adjustment = 1.0000;              //adjustment factor to calculated distance
