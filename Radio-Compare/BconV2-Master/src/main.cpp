@@ -542,7 +542,7 @@ void Smessage()
   if(debug){Serial.println("Transmitting ranging request.");}
   LT.transmitRanging(RangingAddress, TXtimeoutmS, RangingTXPower, WAIT_TX);
   IrqStatus = LT.readIrqStatus(); //Irqstatus is a register value true when done
-  if ( IrqStatus && IRQ_RANGING_MASTER_RESULT_VALID){
+  if ( IrqStatus & IRQ_RANGING_MASTER_RESULT_VALID){
       //digitalWrite(LED1, HIGH);
       if(debug){Serial.println("Valid Ranging received.");}
       range_result = LT.getRangingResultRegValue(RANGING_RESULT_RAW);
