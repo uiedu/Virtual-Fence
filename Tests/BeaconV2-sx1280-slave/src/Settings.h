@@ -14,7 +14,7 @@
 #define NSS 10
 #define RFBUSY 7
 #define NRESET 9
-#define LED1 8
+#define LED1 31
 #define DIO1 5
 
 #define LORA_DEVICE DEVICE_SX1280                //we need to define the device we are using
@@ -30,6 +30,6 @@ const uint8_t CodeRate = LORA_CR_4_5;            //LoRa coding rate
 const uint16_t Calibration = 11350;              //Manual Ranging calibration value
 
 const int8_t TXpower = 10;                       //Transmit power used
-const uint32_t RangingAddress = 1;              //must match address in master
+const uint32_t RangingAddress = 2;              //must match address in master
 
 const uint16_t  rangingRXTimeoutmS = 0xFFFF;     //ranging RX timeout in mS

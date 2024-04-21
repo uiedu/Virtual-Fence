@@ -29,7 +29,7 @@ const uint8_t CodeRate = LORA_CR_4_5;            //LoRa coding rate
 const uint16_t Calibration = 11350;              //Manual Ranging calibrarion value
 
 const int8_t RangingTXPower = 10;                //Transmit power used
-const uint32_t RangingAddress = 1;              //must match address in recever
+uint32_t RangingAddress = 5;              //must match address in recever
 
 const uint16_t  waittimemS = 10000;              //wait this long in mS for packet before assuming timeout
 const uint16_t  TXtimeoutmS = 5000;              //ranging TX timeout in mS

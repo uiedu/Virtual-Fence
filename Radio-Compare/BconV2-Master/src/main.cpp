@@ -76,13 +76,13 @@ void loop()
   
   // 1. Range to each radio in sequence from 1 to Stations 
   //for(RangingAddress = 1; RangingAddress <= Stations; RangingAddress++){
-    RangingAddress = (RangingAddress+1)%2+1; //3;//2;//
+    if (RangingAddress++ >=5){RangingAddress=1;}
     MsgOut="";
     Rmessage();//Adds to MsgOut = "R,RangingAddress,millis()"
     Nmessage();//Range using Nanotron
     
     Smessage();// Range Using SX1280
-    ReadSetting();
+    //ReadSetting();
     if (Tweet){Broadcast(MsgOut);}
     else{Serial.println(MsgOut);}
     
@@ -90,8 +90,8 @@ void loop()
       FlashWrite(MsgOut);
       led_Flash(2,100);
     }
-    
-    Listen(10000);
+    delay(5000);
+    //Listen(10000);
     
     //LT.setupLoRa(Frequency, 0, LORA_SF7, LORA_BW_0400, LORA_CR_4_5);
     //Broadcast(RangingAddress, 123);

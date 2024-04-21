@@ -17,7 +17,7 @@
 #include "Settings.h"
 //
 // Set Station ID
-uint32_t MyID = 2;         //must match address in master (Single didgit only for now, Generalize to have any number)
+uint32_t MyID = 5;         //must match address in master (Single didgit only for now, Generalize to have any number)
 String NanoID = "000000000B0" + String(MyID);  // 9 0s followed by B01 to Bxx
 
 // Flash memory 
@@ -78,9 +78,26 @@ char CharIn;
 
 void loop()
 {
-  while(digitalRead(RFBUSY));
-  LT.setupRanging(Frequency, Offset, SpreadingFactor, Bandwidth, CodeRate, MyID, RANGING_SLAVE);
-  while(LT.receiveRanging(MyID, 0, RangingTXPower, WAIT_RX));
+  //while(digitalRead(RFBUSY));
+  //LT.setupRanging(Frequency, Offset, SpreadingFactor, Bandwidth, CodeRate, MyID, RANGING_SLAVE);
+  
+  if(!LT.receiveRanging(MyID, 0, RangingTXPower, WAIT_RX)){
+    led_Flash(LED4,1,100);
+  };
+   
+   /*Important observations
+    1. LT.receiveRanging(MyID, 0, RangingTXPower, WAIT_RX) returns true ir false on every ranging request on air even if it is not for this radio
+    2. Once it response to ranging, LT.receiveRanging must be called before it can response again
+    3. If Master calls for repeated ranging to average the reading rapidly, make sure to reset the radio before next call
+    for instance, I found out that that led_Flash time has be less than 30ms for Stuart's original ranging code.
+    4. Calling LT.receiveRanging with NO_WAIT only works if radios are not changed. It returned false when 
+
+
+   */
+
+   
+  
+
 /*
   endwaitmS = millis() + rangingRXTimeoutmS;
 
@@ -119,7 +136,7 @@ void loop()
     Serial.println();
   }
 */
-  LT.ResetIRQ();
+  //LT.ResetIRQ();
 }
 
 

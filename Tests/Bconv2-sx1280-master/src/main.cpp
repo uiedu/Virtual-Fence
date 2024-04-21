@@ -59,13 +59,14 @@ void loop()
   distance_sum = 0;
   range_result_sum = 0;
   rangeing_results = 0;                           //count of valid results in each loop
-
+  if(RangingAddress++ >=5 ){RangingAddress=1;}
   for (index = 1; index <= rangeingcount; index++)
   {
 
     startrangingmS = millis();
 
-    Serial.println(F("Start Ranging"));
+    Serial.print(F("Start Ranging To: "));
+    Serial.println(RangingAddress);
 
     LT.transmitRanging(RangingAddress, TXtimeoutmS, RangingTXPower, WAIT_TX);
 
@@ -75,11 +76,11 @@ void loop()
     {
       rangeing_results++;
       rangeings_valid++;
-      digitalWrite(LED1, HIGH);
+      //digitalWrite(LED1, HIGH);
       Serial.print(F("Valid"));
       range_result = LT.getRangingResultRegValue(RANGING_RESULT_RAW);
-      Serial.print(F(",Register,"));
-      Serial.print(range_result);
+      //Serial.print(F(",Register,"));
+      //Serial.print(range_result);
 
       if (range_result > 800000)
       {
@@ -92,13 +93,13 @@ void loop()
 
       Serial.print(F(",Distance,"));
       Serial.print(distance, 1);
-      Serial.print(F(",RSSIReg,"));
-      Serial.print(LT.readRegister(REG_RANGING_RSSI));
+      //Serial.print(F(",RSSIReg,"));
+      //Serial.print(LT.readRegister(REG_RANGING_RSSI));
       RangingRSSI = LT.getRangingRSSI();
       Serial.print(F(",RSSI,"));
       Serial.print(RangingRSSI);
       Serial.print(F("dBm"));
-      digitalWrite(LED1, LOW);
+      //digitalWrite(LED1, LOW);
     }
     else
     {
@@ -159,7 +160,7 @@ void loop()
       }
       */
 
-      delay(2000);
+      delay(1000);
 
     }
     Serial.println();
