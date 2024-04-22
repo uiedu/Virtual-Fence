@@ -52,12 +52,14 @@ uint8_t CheckSerial(); //Reads the code sent from serial console
 void Request(uint32_t RadioID, uint8_t Code);
 void Broadcast(String Msg);
 void ParseCode(uint8_t MsgCode);
-uint8_t CheckRadio();
+bool CheckRadio(uint16_t TimeOut);
 void Rmessage();
 void Nmessage();
 void Smessage();
 void led_Flash(uint16_t flashes, uint16_t delaymS);
 void ReadSetting();
+bool Switch2Slave(uint16_t TimeOut);
+bool RecordBroadcast(uint16_t TimeOut);
 //Global variables
 /// ///////
 String MsgOut;
@@ -67,7 +69,10 @@ bool debug = false;
 bool Tweet = false;
 bool Record = false;
 char CharIn;
-
+uint8_t MsgCode = 0;
+uint32_t Sender = 0;
+uint32_t response_sent;
+uint8_t RadioMode = 2; //Listen mode by default
 
 
 
@@ -76,31 +81,90 @@ void loop()
   
   // 1. Range to each radio in sequence from 1 to Stations 
   //for(RangingAddress = 1; RangingAddress <= Stations; RangingAddress++){
-    if (RangingAddress++ >=5){RangingAddress=1;}
-    MsgOut="";
-    Rmessage();//Adds to MsgOut = "R,RangingAddress,millis()"
-    Nmessage();//Range using Nanotron
-    
-    Smessage();// Range Using SX1280
-    //ReadSetting();
-    if (Tweet){Broadcast(MsgOut);}
-    else{Serial.println(MsgOut);}
-    
-    if (Record){
-      FlashWrite(MsgOut);
-      led_Flash(2,100);
-    }
-    delay(5000);
-    //Listen(10000);
-    
-    //LT.setupLoRa(Frequency, 0, LORA_SF7, LORA_BW_0400, LORA_CR_4_5);
-    //Broadcast(RangingAddress, 123);
-   // Serial.print("Code Received: ");
-    //Serial.println(CheckRadio(MyID));
-    //LT.resetDevice();
-    //Rangeto(x)
-  //}  
+  //if (RangingAddress++ >=5){RangingAddress=1;}
   
+  MsgOut="";
+  Rmessage();//Adds to MsgOut = "R,RangingAddress,millis()"
+  if (Record){ FlashWrite(MsgOut); } 
+  if (Tweet){Broadcast(MsgOut);} else{Serial.print(MsgOut);}
+  delay(1000);
+  MsgOut="";
+  Nmessage();//Range using Nanotron
+  if (Record){ FlashWrite(MsgOut); } 
+  if (Tweet){Broadcast(MsgOut);} else{Serial.print(MsgOut);}
+  delay(1000);
+  
+  MsgOut="";
+  Smessage();
+  if (Tweet){Broadcast(MsgOut);} else{Serial.println(MsgOut);}
+  /*
+    Ranging to SX1280 has follwoing sequence
+      1. Master sends Setting requst with a code to radio it wants to range
+      2. Slave receives the code, and confirms, then set its radio as slave and wait for 5 seconds to get ranging request
+          If none received, slave will go to regular cummunication mode
+      3. If confirmation code matches, Master changes its own settings and send range request
+         Tries 5 times if ranging result is invalid
+         Moves on to next radio 
+      4. If successful ranging received, it writes to memroty and switch to slave mode
+      5. Slave and Master switches role and ranges again
+         Remore radio tries to range up to 5 times if ranging is unsuccessful. then switches to comm mode.
+         If ranging successulf Slve Broadcast the result
+      5. After successful ranging, Master switches to comm mode and listens to broadcast message
+      6  Records the boradcast message
+      7. Repeats 1 - 6 with different code for same radio
+      8. Once all settings are done, switches to next radio      
+  */
+  for(uint8_t Code=20;Code <=73;Code++){
+    if (debug)
+    {
+          Serial.print("Romote radio ");
+          Serial.print(RangingAddress);
+          Serial.print(" Sending code: ");
+          Serial.println(Code); 
+    }
+    
+   
+    Request(RangingAddress,Code);
+    ParseCode(Code);
+    
+    MsgOut="";
+    Smessage();
+    if (Tweet){Broadcast(MsgOut);} else{Serial.println(MsgOut);}
+
+
+    /*
+
+
+    
+    endwaitmS = millis() + 5000; //Try up to 5 seconds to get confirmation
+    while (!CheckRadio(2000) && (millis() <= endwaitmS)){
+      if (millis() >= endwaitmS)
+        {
+          Serial.print("Romote radio ");
+          Serial.print(RangingAddress);
+          Serial.print(" failed to confirm code: ");
+          Serial.println(Code);                                                
+        }
+      else {  
+      Request(RangingAddress,Code); //Try again
+      delay(100);
+      }
+    }
+    
+    if (Sender == RangingAddress){
+      //ParseCode(Code);
+      Smessage();// Range Using SX1280
+      if (Record){FlashWrite(MsgOut); } 
+      if (Tweet){Broadcast(MsgOut);} else{Serial.println(MsgOut);}
+      //Switch2Slave(5000);
+      //RecordBroadcast(500); //Argument is timeout
+    }*/
+    delay(2000); //Small delay before next setting
+  }
+  //Listen(5000);
+  delay(2000);
+    
+     
 }
 
 void setup()
@@ -111,7 +175,7 @@ void setup()
   //Inilize pins as output or input
   PinInitialize();
   
-  FlashInitialize(); //Check if flash is ready
+  //FlashInitialize(); //Check if flash is ready
   NanotronReset();   //Reset Nanotron radio 
 }
 
@@ -210,7 +274,7 @@ void FlashRead(){
   Serial.print("Reading memory from address 0 to address ");
   
   Serial.println(Last_Address);
-  while(digitalRead(RFBUSY)); //Wait while radio is busy
+  //while(digitalRead(RFBUSY)); //Wait while radio is busy
   digitalWrite(NSS, HIGH); // Turnoff Radio
   digitalWrite(Flashpin, LOW); // Turnon Flash
   
@@ -292,8 +356,8 @@ void Listen(uint32_t Duration){
   while (millis() < startMS + Duration){
     if(debug){Serial.println("Listening serial port");}
     ParseCode(CheckSerial());
-    if(debug){Serial.println("Listening Radio");}
-    ParseCode(CheckRadio());
+    //if(debug){Serial.println("Listening Radio");}
+    //ParseCode(CheckRadio());
   }
 }
 
@@ -332,153 +396,175 @@ uint8_t CheckSerial() { //Return the command in pair of ()
 }
 
 void Request(uint32_t RadioID, uint8_t Code){
-  String Msg = "<" + String(RadioID) + "," + String(Code)+">";
-  Serial.print(Msg);
-  uint8_t  TXPacketL = Msg.length() + 1;
-  char buff[TXPacketL];
-  Msg.toCharArray(buff,TXPacketL);
-  uint8_t *u = (uint8_t *) buff;
-    // Transmit back
-    //TXPacketL = sizeof(buff); 
-    delay(100); //Delay Needed for the Beacon as it has just sent a message and may not be ready to receive.
-    LT.transmitIRQ(u, TXPacketL-1, 500, TXpower, WAIT_TX); //This did not take Char array
-    
-  }
-  void Broadcast(String Msg){
-  while(flash.busy()); //Wait until flash is busy
-  while(digitalRead(RFBUSY)); //Wait while radio is busy
+  
   digitalWrite(Flashpin,HIGH);
   digitalWrite(NSS,LOW);
-  LT.begin(NSS, NRESET, RFBUSY, DIO1, LORA_DEVICE);
-  delay(1);
-  while(digitalRead(RFBUSY)); //Wait while radio is busy
-
+  LT.begin(NSS, NRESET, RFBUSY, LORA_DEVICE);
+  delay(10);
+  LT.setupLoRa(Frequency, Offset, LORA_SF7, LORA_BW_0400, LORA_CR_4_5);
+  String Msg = "<" + String(RadioID) + "," + String(MyID)+ "," + String(Code)+">";
   uint8_t  TXPacketL = Msg.length() + 1;
   char buff[TXPacketL];
   Msg.toCharArray(buff,TXPacketL);
   uint8_t *u = (uint8_t *) buff;
-  LT.transmitIRQ(u, TXPacketL-1, 500, RangingTXPower, WAIT_TX); //This did not take Char array
-  while(digitalRead(RFBUSY)); //Wait while radio is busy
-  // Since radio is default mode do not turn off radio
- }
-
- void ParseCode(uint8_t MsgCode){
-  /*
-  Code 0 is prohibited 
-  Code 255 = Stop Recording
-  Code 1 = Start Recording
-  Code 2 = Read Flash
-  Code 3 = Boradcast MsgOut to radio 101 (monitor radio ID)
-  Code 4 = Do not Boradcast MsgOut to radio 101 (monitor radio ID)
-  Code 5 = Read Sx1250 registers
-  Code 101 = Reset Flash (USE extreme Caution)
-
-
-  Code 20-73 = BW = 3 factors, SF = 6 factor, Transmission Power = 0, 15, 31 (3 factors) Total 54
-  Code 101 = Reset memory
-  */
-  if(MsgCode == 1 )       {Record = true;  }
-  else if (MsgCode == 2)  {FlashRead();    }
-
-  else if(MsgCode >= 20 && MsgCode <=73) 
-  {
-    uint8_t Code1 = (MsgCode-20)%6; // This will vary from 0 to 5 and repeats for Msg Code from 2 to 55
-    switch (Code1)
-    {
-      case 0: SpreadingFactor= LORA_SF5;break;
-      case 1: SpreadingFactor= LORA_SF6;break;
-      case 2: SpreadingFactor= LORA_SF7;break;
-      case 3: SpreadingFactor= LORA_SF8;break;
-      case 4: SpreadingFactor= LORA_SF9;break;
-      case 5: SpreadingFactor= LORA_SF10;break;
-      default:break;      
-    }
-    uint8_t Code2 = ((MsgCode-20)/6)%3;
-    switch (Code2)
-    {
-      case 0: Bandwidth=LORA_BW_0400;break;
-      case 1: Bandwidth=LORA_BW_0800;break;
-      case 2: Bandwidth=LORA_BW_1600;break;
-      default:break;      
-    }
-    uint8_t Code3 = ((MsgCode-20)/18)%3;
-    switch (Code3)
-    {
-      case 0: RangingTXPower=0;break;
-      case 1: RangingTXPower=15;break;
-      case 2: RangingTXPower=31;break;
-      default:break;      
-    }
-  }
-  else if (MsgCode == 101)
-  {
-    FlashReset();
-    Request(CommanderID,101);
-  }
+  //delay(100); //Delay Needed for the Beacon as it has just sent a message and may not be ready to receive.
+  LT.transmitIRQ(u, TXPacketL-1, 500, TXpower, WAIT_TX); //This did not take Char array
+  //Wait for code confirmation
+  if(debug){
+    Serial.print("Sending Request: ");
+    Serial.println(Msg);
+  } 
+  while(digitalRead(RFBUSY));  
+}
   
-  else if(MsgCode ==255) {Record = false;}
- };
- 
- uint8_t CheckRadio(){
-   // Check if there is message in RXBuffer and if not wait for Timeout 
-   // Will retun the Message code if valid message received for this radio ID. Else return 0. 
-   // Valid message has this structure <RadioID, MessageCode> Both RadioID and MessageCode are  integers
-    uint8_t RXPacketL;                              //stores length of packet received
-    uint8_t RXBUFFER_SIZE = 255;                    //RX buffer size
-    uint8_t RXBUFFER[RXBUFFER_SIZE];                //create the buffer that received packets are copied into
-    uint8_t TimeOut = 100;                           //RxTimeout
-   //Read buffer
-    RXPacketL = LT.receiveIRQ(RXBUFFER, RXBUFFER_SIZE, TimeOut, WAIT_RX); //wait for a packet to arrive 
-    
-    //Is mesage length > 0?
-    bool NoErr = (RXPacketL > 0);
-    
-    //In no error then Check if RSSI > -100 else return false
-    if (NoErr){
-        NoErr = NoErr and  LT.readPacketRSSI() >= -120;
-      }
-     else{
-      //if (debug){Serial.println("No message");}
-      return 0;
-     } 
-    //In no error then check if sentence structure is valid else return false
-    
-    if (NoErr){
-        NoErr = NoErr and  (char)RXBUFFER[0] == '<' and (char)RXBUFFER[RXPacketL-1] == '>';
-      }
-    else{
-      return 0;
-     } 
-    
-    if (NoErr)
-    {
-      String  MsgIn = "";
-      for (uint8_t index = 1; index < RXPacketL-1; index++){
-        MsgIn += (char)RXBUFFER[index];
-      }
-      int c1 = MsgIn.indexOf(',');       //Find first comma position
-      
-      uint32_t BeaconID = MsgIn.substring(0, c1).toInt(); //Substring counts from 0. NOTE: Strangely returns character up to position of c1-1. C1 is not included
-      uint8_t MsgCode = MsgIn.substring(c1+1).toInt();
-      
-      if(BeaconID == MyID ){
-          return MsgCode;
-        }
-      else{
-          return 0; //0 shoud not be included in code
-      }     
+void Broadcast(String Msg){
+while(flash.busy()); //Wait until flash is busy
+Serial.println("Flash Not Busy");
+//while(digitalRead(RFBUSY)); //Wait while radio is busy
+digitalWrite(Flashpin,HIGH);
+digitalWrite(NSS,LOW);
+if (LT.begin(NSS, NRESET, RFBUSY, DIO1, LORA_DEVICE)){ Serial.println("Radio ready for trasmission");};
+delay(1);
+//while(digitalRead(RFBUSY)); //Wait while radio is busy
+
+uint8_t  TXPacketL = Msg.length() + 1;
+char buff[TXPacketL];
+Msg.toCharArray(buff,TXPacketL);
+uint8_t *u = (uint8_t *) buff;
+LT.transmitIRQ(u, TXPacketL-1, 500, RangingTXPower, WAIT_TX); //This did not take Char array
+Serial.println("Broadcast complete.");
+//while(digitalRead(RFBUSY)); //Wait while radio is busy
+// Since radio is default mode do not turn off radio
+}
+
+void ParseCode(uint8_t MsgCode){
+/*
+Code 0 is prohibited 
+Code 255 = Stop Recording
+Code 1 = Start Recording
+Code 2 = Read Flash
+Code 3 = Boradcast MsgOut to radio 101 (monitor radio ID)
+Code 4 = Do not Boradcast MsgOut to radio 101 (monitor radio ID)
+Code 5 = Read Sx1250 registers
+Code 101 = Reset Flash (USE extreme Caution)
+
+
+Code 20-73 = BW = 3 factors, SF = 6 factor, Transmission Power = 0, 15, 31 (3 factors) Total 54
+Code 101 = Reset memory
+*/
+if(MsgCode == 1 )       {Record = true; Serial.println("Recording ON") ;}
+else if (MsgCode == 2)  {FlashRead();  Serial.println("Reading Falsh");  }
+else if (MsgCode == 3)  {Tweet = true; Serial.println("Broadcasting ON");  }
+else if (MsgCode == 4)  {Tweet = false;  Serial.println("Broadcasting OFF");}
+
+else if(MsgCode >= 20 && MsgCode <=73) 
+{
+  uint8_t Code1 = (MsgCode-20)%6; // This will vary from 0 to 5 and repeats for Msg Code from 2 to 55
+  switch (Code1)
+  {
+    case 0: SpreadingFactor= LORA_SF5;break;
+    case 1: SpreadingFactor= LORA_SF6;break;
+    case 2: SpreadingFactor= LORA_SF7;break;
+    case 3: SpreadingFactor= LORA_SF8;break;
+    case 4: SpreadingFactor= LORA_SF9;break;
+    case 5: SpreadingFactor= LORA_SF10;break;
+    default:break;      
+  }
+  uint8_t Code2 = ((MsgCode-20)/6)%3;
+  switch (Code2)
+  {
+    case 0: Bandwidth=LORA_BW_0400;break;
+    case 1: Bandwidth=LORA_BW_0800;break;
+    case 2: Bandwidth=LORA_BW_1600;break;
+    default:break;      
+  }
+  uint8_t Code3 = ((MsgCode-20)/18)%3;
+  switch (Code3)
+  {
+    case 0: RangingTXPower=0;break;
+    case 1: RangingTXPower=15;break;
+    case 2: RangingTXPower=31;break;
+    default:break;      
+  }
+}
+else if (MsgCode == 101)
+{
+  FlashReset();
+  Request(CommanderID,101);
+}
+
+else if(MsgCode ==255) {Record = false; Serial.println("Recording OFF");}
+};
+
+
+bool CheckRadio(uint16_t TimeOut){
+  // Check if there is message in RXBuffer and if not wait for Timeout 
+  // Will retun the Message code if valid message received for this radio ID. Else return 0. 
+  // Valid message has this structure <RadioID, MessageCode> Both RadioID and MessageCode are  integers
+  uint8_t RXPacketL;                              //stores length of packet received
+  uint8_t RXBUFFER_SIZE = 255;                    //RX buffer size
+  uint8_t RXBUFFER[RXBUFFER_SIZE];                //create the buffer that received packets are copied into
+  
+  //Read buffer
+  LT.setupLoRa(Frequency, Offset, LORA_SF7, LORA_BW_0400, LORA_CR_4_5);
+  
+  RXPacketL = LT.receiveIRQ(RXBUFFER, RXBUFFER_SIZE, TimeOut, WAIT_RX); //wait for a packet to arrive 
+  
+  //Is mesage length > 0?
+  bool NoErr = (RXPacketL > 0);
+  
+  //In no error then Check if RSSI > -100 else return false
+  if (NoErr){
+      NoErr = NoErr and  LT.readPacketRSSI() >= -120;
     }
-    else
-    {
-      return 0;
+    else{
+    //if (debug){Serial.println("No message");}
+    return false;
+    } 
+  //In no error then check if sentence structure is valid else return false
+  
+  if (NoErr){
+      NoErr = NoErr and  (char)RXBUFFER[0] == '<' and (char)RXBUFFER[RXPacketL-1] == '>';
+    }
+  else{
+    return false;
     } 
   
- }
+  if (NoErr)
+  {
+    String  MsgIn = "";
+    for (uint8_t index = 1; index < RXPacketL-1; index++){
+      MsgIn += (char)RXBUFFER[index];
+    }
+    int c1 = MsgIn.indexOf(',');       //Find first comma position
+    int c2 = MsgIn.indexOf(',', c1+1); //Find second comma position
+    if(debug){Serial.print("Received: ");Serial.println(MsgIn);}
+    uint32_t ToID = MsgIn.substring(0, c1).toInt(); //Substring counts from 0. NOTE: Strangely returns character up to position of c1-1. C1 is not included
+    
+    
+    if(ToID == MyID ){
+        Sender = MsgIn.substring(c1+1, c2).toInt();
+        MsgCode = MsgIn.substring(c2+1).toInt();
+        return true;
+      }
+    else{
+        return false; //0 shoud not be included in code
+    }     
+  }
+  else
+  {
+    return false;
+  } 
+
+}
+
 
 
 void Rmessage(){
   if(debug){Serial.println("Starting R-message.");}
   MsgOut = "R,";
+  MsgOut += MyID;
+  MsgOut += ",";
   MsgOut += RangingAddress;
   MsgOut += ",";
   MsgOut += millis(); 
@@ -490,6 +576,8 @@ void Nmessage(){
   //Create Line 2 = "N,0,range in cm, RSSI,Temperature, Battery"
   if(debug){Serial.println("Starting N-message.");}
   MsgOut += "N,";
+  MsgOut += MyID;
+  MsgOut += ",";
   String Rto =  "RATO 0 000000000B0" + String(RangingAddress);
   Serial2.println(Rto); //Returns "=Code,Distance in cm,RSSI \n\r"
   if(debug){Serial.println("Ranging to: " + Rto);}
@@ -520,12 +608,15 @@ void Nmessage(){
   if(debug){Serial.println("N-message done.");}
 }
 
+
 void Smessage()
 {
   if(debug){Serial.println("Starting S-message.");}
   MsgOut += "S,"; 
+  MsgOut += MyID;
+  MsgOut += ",";
   while(flash.busy()); //Wait until flash is busy
-  if(debug){Serial.println("Flash not busy.");}
+  //if(debug){Serial.println("Flash not busy.");}
   digitalWrite(Flashpin,HIGH);
   digitalWrite(NSS,LOW);
   if(debug){Serial.println("Beginning Radio.");}
@@ -596,3 +687,76 @@ void ReadSetting(){
   Serial.println();
   Serial.println();
 }
+
+bool Switch2Slave(uint16_t TimeOut){
+  LT.setupRanging(Frequency, Offset, SpreadingFactor, Bandwidth, CodeRate, MyID, RANGING_SLAVE);
+  endwaitmS = millis() + TimeOut;
+  while (!LT.receiveRanging(MyID, 0, RangingTXPower, WAIT_RX) && (millis() <= endwaitmS)){
+    if (millis() >= endwaitmS)
+      {
+        Serial.println("Ranging request Timeout!!");
+        return false;// Setup radio to  communication mode
+        
+      }
+    else{
+      IrqStatus = LT.readIrqStatus();
+      if (IrqStatus & IRQ_RANGING_SLAVE_RESPONSE_DONE)
+      {
+        Serial.println(" Response sent");
+        return true;
+
+      }
+      else
+      {
+        Serial.print("Slave error,");
+        Serial.print(",Irq,");
+        Serial.print(IrqStatus, HEX);
+        LT.printIrqStatus();
+        return false;
+      }
+    }
+  }
+  return true; 
+}
+
+
+bool RecordBroadcast(uint16_t TimeOut){ //RxTimeout give up to TimeOut ms for remote to respond
+  // Check if there is message in RXBuffer and if not wait for Timeout 
+  // Will retun the Message code if valid message received for this radio ID. Else return 0. 
+  // Valid message has this structure <RadioID, MessageCode> Both RadioID and MessageCode are  integers
+  uint8_t RXPacketL;                              //stores length of packet received
+  uint8_t RXBUFFER_SIZE = 255;                    //RX buffer size
+  uint8_t RXBUFFER[RXBUFFER_SIZE];                //create the buffer that received packets are copied into
+                         
+  //Read buffer
+  LT.setupLoRa(Frequency, Offset, LORA_SF7, LORA_BW_0400, LORA_CR_4_5);
+  
+  RXPacketL = LT.receiveIRQ(RXBUFFER, RXBUFFER_SIZE, TimeOut, WAIT_RX); //wait for a packet to arrive 
+  
+  //Is mesage length > 0?
+  bool NoErr = (RXPacketL > 0);
+    
+  if (NoErr){
+      NoErr = NoErr and  (char)RXBUFFER[0] == '*' and (char)RXBUFFER[RXPacketL-1] == '*'; //Broadcast message has *---* format
+    }
+  else{
+    return false;
+    } 
+  
+  if (NoErr)
+  {
+    String  MsgIn = "S,";
+    for (uint8_t index = 1; index < RXPacketL-1; index++){
+      MsgIn += (char)RXBUFFER[index];
+    }
+    if (Record){ FlashWrite(MsgIn); } 
+    Serial.println(MsgIn);
+    return true;
+  }
+  else
+  {
+    return false;
+  } 
+  
+}
+
