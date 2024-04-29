@@ -16,7 +16,7 @@
 #include "Settings.h"
 //
 // Set Station ID
-uint32_t MyID = 8;         //must match address in master (Single didgit only for now, Generalize to have any number)
+uint32_t MyID = 4;         //must match address in master (Single didgit only for now, Generalize to have any number)
 String NanoID = "000000000B0" + String(MyID);  // 9 0s followed by B01 to Bxx
 
 // Flash memory 
@@ -49,7 +49,7 @@ void FlashWrite(String Str);
 void FlashRead();
 void NanotronReset();
 void Listen(uint32_t Duration);
-uint8_t CheckSerial(); //Reads the code sent from serial console
+bool CheckSerial(); //Reads the code sent from serial console
 void Request(uint32_t RadioID, uint8_t Code);
 void Broadcast(String Msg);
 void ParseCode();
@@ -328,7 +328,7 @@ void Listen(uint32_t Duration){
 }
 
 // This function returns the command within a pair of () sent from serial port
-uint8_t CheckSerial() { //Return the command in pair of ()
+bool CheckSerial() { //Return the command in pair of ()
 // This is a better code to ensure commnd from serial is read properly 
 // All command starts with ( and end with )
     static bool recvInProgress = false; //Static is necessary not to terminte reading at the middle of the line

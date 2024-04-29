@@ -3406,17 +3406,17 @@ uint8_t SX128XLT::receiveRanging(uint32_t address, uint16_t timeout, int8_t txpo
   Serial.println(F("receiveRanging()"));
 #endif
 
-  setTxParams(txpower, RADIO_RAMP_02_US);
+  setTxParams(txpower, RADIO_RAMP_02_US); //RADIO_RAMP_02_US = 0 No RAMP
   setRangingSlaveAddress(address);
   setDioIrqParams(IRQ_RADIO_ALL, (IRQ_RANGING_SLAVE_RESPONSE_DONE + IRQ_RANGING_SLAVE_REQUEST_DISCARDED + IRQ_HEADER_ERROR), 0, 0);
   setRx(timeout);
 
-  if (!wait)
+  if (!wait)  //If NO_WAIT, then !wait = true because NO_WAIT = 0 WAIT_RX=1  
   {
-    return NO_WAIT;                                          //not wait requested so no packet length to pass
+    return NO_WAIT;                                         //not wait requested so no packet length to pass
   }
 
-  while (!digitalRead(_RXDonePin));
+  while (!digitalRead(_RXDonePin));  //Wait until ranging requist is received. It could be for any radio
 
   setMode(MODE_STDBY_RC);                                    //ensure to stop further packet reception
 

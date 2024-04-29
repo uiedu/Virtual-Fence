@@ -48,10 +48,10 @@ void FlashWrite(String Str);
 void FlashRead();
 void NanotronReset();
 void Listen(uint32_t Duration);
-uint8_t CheckSerial(); //Reads the code sent from serial console
+bool CheckSerial(); //Reads the code sent from serial console
 void Request(uint32_t RadioID, uint8_t Code);
 void Broadcast(String Msg);
-void ParseCode(uint8_t MsgCode);
+void ParseCode();
 bool CheckRadio(uint16_t TimeOut);
 void Rmessage();
 void Nmessage();
@@ -67,7 +67,7 @@ String MsgIn;
 uint8_t d = 50; //Standary delay time in ms
 bool debug = false;
 bool Tweet = false;
-bool Record = false;
+bool Record = true;
 char CharIn;
 uint8_t MsgCode = 0;
 uint32_t Sender = 0;
@@ -78,10 +78,9 @@ uint8_t RadioMode = 2; //Listen mode by default
 
 void loop()
 {
-  
   // 1. Range to each radio in sequence from 1 to Stations 
   //for(RangingAddress = 1; RangingAddress <= Stations; RangingAddress++){
-  //if (RangingAddress++ >=5){RangingAddress=1;}
+  if (RangingAddress++ >=5){RangingAddress=1;}
   
   MsgOut="";
   Rmessage();//Adds to MsgOut = "R,RangingAddress,millis()"
@@ -94,9 +93,10 @@ void loop()
   if (Tweet){Broadcast(MsgOut);} else{Serial.print(MsgOut);}
   delay(1000);
   
-  MsgOut="";
-  Smessage();
-  if (Tweet){Broadcast(MsgOut);} else{Serial.println(MsgOut);}
+  //MsgOut="";
+  //Smessage();
+  //if (Record){ FlashWrite(MsgOut); }
+  //if (Tweet){Broadcast(MsgOut);} else{Serial.println(MsgOut);}
   /*
     Ranging to SX1280 has follwoing sequence
       1. Master sends Setting requst with a code to radio it wants to range
@@ -125,10 +125,12 @@ void loop()
     
    
     Request(RangingAddress,Code);
-    ParseCode(Code);
+    MsgCode = Code;
+    ParseCode();
     
     MsgOut="";
     Smessage();
+    if (Record){ FlashWrite(MsgOut); }
     if (Tweet){Broadcast(MsgOut);} else{Serial.println(MsgOut);}
 
 
@@ -159,10 +161,10 @@ void loop()
       //Switch2Slave(5000);
       //RecordBroadcast(500); //Argument is timeout
     }*/
-    delay(2000); //Small delay before next setting
+    Listen(1000);
   }
-  //Listen(5000);
-  delay(2000);
+  Listen(1000);
+  //delay(2000);
     
      
 }
@@ -175,7 +177,7 @@ void setup()
   //Inilize pins as output or input
   PinInitialize();
   
-  //FlashInitialize(); //Check if flash is ready
+  FlashInitialize(); //Check if flash is ready
   NanotronReset();   //Reset Nanotron radio 
 }
 
@@ -232,10 +234,11 @@ void FlashInitialize(){
 // FlashReset resets the flash. Can be invoked with code:101
 void FlashReset(){
   Serial.print("Resetting Flash: ");
-  while(digitalRead(RFBUSY));//Wait while radio is busy
+  //while(digitalRead(RFBUSY));//Wait while radio is busy
   digitalWrite(NSS, HIGH); // Turnoff Radio
   digitalWrite(Flashpin, LOW); // Turnon Flash
   Last_Address = 0; 
+  EEPROM.write(0,0xaa);
   EEPROM.put(m,Last_Address); // EEPROM, starting Byte 1, write Last_Address which is 0 at this time. It will take 4 bytes as Last_address is Unsigend Long Integer
   flash.chipErase(); //Erage the flash
   while(flash.busy()); //Wait until all erased
@@ -253,7 +256,7 @@ void FlashWrite(String sMsg){
     if (Last_Address < 16777000){  // W25Q128JV Flash memroy 128Mbits = 16 MB = 16*2^6 = 16777216 Bytes // Rounding down to 1000
       char cMsg[sMsg.length()]; //Copy all of it to keep one \n. str_len-1 will not copy \n
       sMsg.toCharArray(cMsg,sMsg.length());
-      while(digitalRead(RFBUSY)); //Wait while radio is busy
+      //while(digitalRead(RFBUSY)); //Wait while radio is busy
       digitalWrite(NSS, HIGH); // Turnoff Radio
       digitalWrite(Flashpin, LOW); // Turnon Flash
       
@@ -355,21 +358,21 @@ void Listen(uint32_t Duration){
   uint32_t startMS = millis();
   while (millis() < startMS + Duration){
     if(debug){Serial.println("Listening serial port");}
-    ParseCode(CheckSerial());
+    if(CheckSerial()){ParseCode();};
     //if(debug){Serial.println("Listening Radio");}
     //ParseCode(CheckRadio());
   }
 }
 
 // This function returns the command within a pair of () sent from serial port
-uint8_t CheckSerial() { //Return the command in pair of ()
+bool CheckSerial() { //Return the command in pair of ()
 // This is a better code to ensure commnd from serial is read properly 
 // All command starts with ( and end with )
     static bool recvInProgress = false; //Static is necessary not to terminte reading at the middle of the line
     char startMarker = '(';
     char endMarker = ')';
     char rc;
-    String SerialMsg ="0";
+    String SerialMsg ="";
     bool EndCommand = false;
     //See if serial message is available, newCommand is false at this point
     while (Serial.available() > 0 && EndCommand == false) {
@@ -387,11 +390,17 @@ uint8_t CheckSerial() { //Return the command in pair of ()
         }
 
         else if (rc == startMarker) { //No need to read until start marker is found
-            SerialMsg = "0"; //Start marker found get ready to read
+            SerialMsg = ""; //Start marker found get ready to read
             recvInProgress = true;
         }
     }
-    return SerialMsg.toInt();
+    if (SerialMsg ==""){
+      return false;
+    }
+    else{
+      MsgCode =  SerialMsg.toInt();
+      return true ;
+    }
     
 }
 
@@ -437,7 +446,7 @@ Serial.println("Broadcast complete.");
 // Since radio is default mode do not turn off radio
 }
 
-void ParseCode(uint8_t MsgCode){
+void ParseCode(){
 /*
 Code 0 is prohibited 
 Code 255 = Stop Recording
@@ -453,7 +462,7 @@ Code 20-73 = BW = 3 factors, SF = 6 factor, Transmission Power = 0, 15, 31 (3 fa
 Code 101 = Reset memory
 */
 if(MsgCode == 1 )       {Record = true; Serial.println("Recording ON") ;}
-else if (MsgCode == 2)  {FlashRead();  Serial.println("Reading Falsh");  }
+else if (MsgCode == 2)  {FlashRead();}
 else if (MsgCode == 3)  {Tweet = true; Serial.println("Broadcasting ON");  }
 else if (MsgCode == 4)  {Tweet = false;  Serial.println("Broadcasting OFF");}
 
@@ -578,6 +587,8 @@ void Nmessage(){
   MsgOut += "N,";
   MsgOut += MyID;
   MsgOut += ",";
+  MsgOut += RangingAddress;
+  MsgOut += ",";
   String Rto =  "RATO 0 000000000B0" + String(RangingAddress);
   Serial2.println(Rto); //Returns "=Code,Distance in cm,RSSI \n\r"
   if(debug){Serial.println("Ranging to: " + Rto);}
@@ -615,6 +626,8 @@ void Smessage()
   MsgOut += "S,"; 
   MsgOut += MyID;
   MsgOut += ",";
+  MsgOut += RangingAddress;
+  MsgOut += ",";
   while(flash.busy()); //Wait until flash is busy
   //if(debug){Serial.println("Flash not busy.");}
   digitalWrite(Flashpin,HIGH);
@@ -629,7 +642,7 @@ void Smessage()
   LT.setupRanging(Frequency, Offset, SpreadingFactor, Bandwidth, CodeRate, RangingAddress, RANGING_MASTER);
   delay(1);
   while (digitalRead(RFBUSY)){} //Wait until Radio busy
-  
+  Calibration = LT.lookupCalibrationValue( SpreadingFactor,Bandwidth);
   if(debug){Serial.println("Transmitting ranging request.");}
   LT.transmitRanging(RangingAddress, TXtimeoutmS, RangingTXPower, WAIT_TX);
   IrqStatus = LT.readIrqStatus(); //Irqstatus is a register value true when done
@@ -641,6 +654,7 @@ void Smessage()
       if (range_result > 800000) {range_result = 0;}
       distance = LT.getRangingDistance(RANGING_RESULT_RAW, range_result, distance_adjustment); //Just a calculation
       RangingRSSI = LT.getRangingRSSI();
+      
       MsgOut += distance;
       MsgOut += ",";
       MsgOut += RangingRSSI;

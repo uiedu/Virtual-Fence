@@ -28,7 +28,7 @@
 uint8_t Bandwidth = LORA_BW_0800;           //LoRa bandwidth
 uint8_t SpreadingFactor = LORA_SF8;         //LoRa spreading factor
 int8_t RangingTXPower = 31;                 //Transmit power used
-uint32_t RangingAddress = 1;              //must match address in recever
+uint32_t RangingAddress = 8;              //must match address in recever
 uint16_t Calibration = 11426;              //Manual Ranging calibrarion value
 int8_t TXpower = 31;                      //Transmit power used 0 to 31
 /*
@@ -61,3 +61,5 @@ float distance_adjustment = 1.0000;              //adjustment factor to calculat
 
 #define ENABLEOLED                               //enable this define to use display 
 #define ENABLEDISPLAY                            //enable this define to use display
+
+//Lora Modem Secure Communicaton
