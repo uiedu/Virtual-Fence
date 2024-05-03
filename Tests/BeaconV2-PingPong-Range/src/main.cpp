@@ -32,7 +32,7 @@ void led_Flash(uint16_t flashes, uint16_t delaymS);
 void printPacketDetails();
 void SetSx1280Mode(uint8_t mode);
 bool Range();
-bool RangeMe();
+bool RangeMe(uint16_t TimeOut);
 
 //Ranging Variables
 uint16_t rangeing_errors, rangeings_valid, rangeing_results;
@@ -44,15 +44,15 @@ int32_t range_result;
 int16_t RangingRSSI;
 String MsgOut;
 
-bool Ping = false;
+bool Ping = true;
 bool Success = false;
 // Ping Variables
 uint8_t buff[] = "Hello World";                 //the payload to send
 uint8_t TXPacketL;
 #define ACKtimeout 1000                         //Acknowledge timeout in mS                      
-#define TXtimeout 100                          //transmit timeout in mS. If 0 return from transmit function after send.  
+#define TXtimeout 0                          //transmit timeout in mS. If 0 return from transmit function after send.  
  
-const uint32_t NetworkID = 8;              //NetworkID identifies this connection, needs to match value in receiver
+const uint16_t NetworkID = 0x3210;              //NetworkID identifies this connection, needs to match value in receiver
 //Pong Variables
 #define ACKdelay 100                            //delay in mS before sending acknowledge                    
 #define RXtimeout 5000                          //receive timeout in mS.   
@@ -80,7 +80,7 @@ void loop()
     {
       //if transmitReliableAutoACK() returns > 0 then transmit and ack was OK
       Range();
-      RangeMe();
+      RangeMe(1000);
 
               
     }
@@ -102,7 +102,7 @@ void loop()
     if (PacketOK > 0)
     {
       //if the LT.receiveReliable() returns a value > 0 for PacketOK then packet was received OK
-      RangeMe();
+      RangeMe(1000);
       //delay(100);
       Range();
     }
@@ -132,16 +132,14 @@ void loop()
 void setup()
 {
   Serial.begin(115200);
-  PinInitialize();
   Serial.println();
-  SPI.begin();
   if (Ping){
     Serial.println(F("209_Reliable_Transmitter_AutoACK Starting"));
   }
   else{
     Serial.println(F("209_Reliable_Receiver_AutoACK Starting"));
   }
-  
+  SPI.begin();
 
   if (LT.begin(NSS, NRESET, RFBUSY, DIO1, LORA_DEVICE))
   {
@@ -154,6 +152,10 @@ void setup()
     while (1);
   }
 
+  //LT.setupLoRa(2445000000, 0, LORA_SF5, LORA_BW_1600, LORA_CR_4_5);
+  LT.setupLoRa(2445000000, 0, LORA_SF7, LORA_BW_0400, LORA_CR_4_5);
+  Serial.println(F("Ready"));
+  Serial.println();
 }
 //UDFs
 
@@ -260,7 +262,7 @@ bool Range(){
     return false;
     
   }
-}
+  }
 
 bool RangeMe(){
   SetSx1280Mode(2);

@@ -11,8 +11,9 @@
 //  Sx1280 Experimental settings
 uint8_t Bandwidth = LORA_BW_0800;    //LoRa bandwidth
 uint8_t SpreadingFactor = LORA_SF8;  //LoRa spreading factor
-int8_t RangingTXPower = 10;                 //Transmit power used 0 to 31
+int8_t RangingTXPower = 31;          //Transmit power used 0 to 31
 uint16_t Calibration = 11426;        //Ranging calibrarion value from table below or from manual calibration for better results
+uint32_t RangingAddress = 0;              //must match address in recever
 /*  Calibration values from applicaiton note
 __________________________________________________________________
                                            SF
@@ -42,16 +43,23 @@ ______________________________________________________________________*/
 #define LED3 32//defined as output in beaconinit
 #define LED4 33//defined as output in beaconinit
 #define LED5 34//defined as output in beaconinit
+#define SX1280LED 8//defined as output 
 
-//LoRa Modem Parameters
+//LoRa Modem Const Parameters
 const uint32_t Frequency = 2445000000;           //frequency of transmissions in hz
 const int32_t Offset = 0;                        //offset frequency in hz for calibration purposes
 const uint8_t CodeRate = LORA_CR_4_5;            //LoRa coding rate
 const uint16_t  rangingRXTimeoutmS = 0x00FF;     //ranging RX timeout in mS
-
-//LoRa Modem Constant Parameters
 const uint16_t  waittimemS = 10000;              //wait this long in mS for packet before assuming timeout
 const uint16_t  TXtimeoutmS = 5000;              //ranging TX timeout in mS
 const uint16_t  packet_delaymS = 0;              //forced extra delay in mS between ranging requests
 const uint16_t  rangeingcount = 1;               //number of times ranging is carried out for each distance measurment
-float distance_adjustment = 1.0000;              //adjustment factor to calculated distance
+const float distance_adjustment = 1.0000;              //adjustment factor to calculated distance
+const int8_t TXpower = 31;                        //Communicaiton is always at highest power
+
+
+// Flash memory 
+#define Flashpin         21				// Flash memory SS pin
+uint16_t expectedDeviceID = 0xEF40;
+uint32_t Last_Address = 0;
+uint8_t m = 6;                  //Address of memory wehre Last_address starts
