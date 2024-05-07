@@ -53,7 +53,7 @@ uint32_t RangingAddress = Stations;          //must match address in recever
 bool debug = false;                          //Debug Message ON
 bool Tweet = false;                         //Broadcast instead of serial out
 bool Record = false;                        //Record to memory 
-bool GoRange = true;
+bool GoRange = false;
     
 
 //UDF definitions
@@ -112,15 +112,15 @@ uint8_t RadioMode = 0; //Listen mode by default
 uint8_t buff[] = "Hello World";
 uint16_t PayloadCRC;
 uint8_t TXPacketL;
-#define ACKtimeout 200                         //Acknowledge timeout in mS                      
+#define ACKtimeout 300                         //Acknowledge timeout in mS                      
 #define TXtimeout 100                          //transmit timeout in mS. If 0 return from transmit function after send.  
 #define TXattempts 1                          //number of times to attempt to TX and get an Ack before failing  
 
 //Pong Variables
 const uint8_t RXBUFFER_SIZE = 251;              //RX buffer size, set to max payload length of 251, or maximum expected length
 uint8_t RXBUFFER[RXBUFFER_SIZE];                //create the buffer that received packets are copied into
-#define ACKdelay 50                            //delay in mS before sending acknowledge                    
-#define RXtimeout 200                         //receive timeout in mS.   
+#define ACKdelay 100                            //delay in mS before sending acknowledge                    
+#define RXtimeout 300                         //receive timeout in mS.   
 uint8_t RXPacketL;                              //stores length of packet received
 uint8_t RXPayloadL;                             //stores length of payload received
 uint8_t PacketOK;                               //set to > 0 if packetOK
@@ -686,7 +686,7 @@ bool SxRange()
   IrqStatus = LT.readIrqStatus(); //Irqstatus is a register value true when done
   if ( IrqStatus & IRQ_RANGING_MASTER_RESULT_VALID){
       //digitalWrite(LED1, HIGH);
-      
+      //led_Flash(1,100); Do not flash. It mess up with timing 
       range_result = LT.getRangingResultRegValue(RANGING_RESULT_RAW);
       if (range_result > 800000) {range_result = 0;}
       distance = LT.getRangingDistance(RANGING_RESULT_RAW, range_result, distance_adjustment); //Just a calculation
@@ -706,6 +706,7 @@ bool SxRange()
       return true;
     }
   else{
+    //led_Flash(2,100); Do not flash. It mess up wit timing 
     MsgOut += "-1"; //Ranging not successful write negative distance to indicate invalid result
     MsgOut += Bandwidth;
     MsgOut += ",";
