@@ -16,7 +16,7 @@
 #include "Settings.h"
 //
 // Set Station ID
-uint32_t MyID = 5;         //must match address in master (Single didgit only for now, Generalize to have any number)
+uint32_t MyID = 1;         //must match address in master (Single didgit only for now, Generalize to have any number)
 
 String NanoID = "000000000B0" + String(MyID);  // 9 0s followed by B01 to Bxx
 String RemoteID = "000000000C00";
@@ -94,14 +94,14 @@ uint8_t RadioMode = 0; //Listen mode by default
 uint16_t PayloadCRC;
 uint8_t TXPacketL;
 #define ACKtimeout 200                         //Acknowledge timeout in mS                      
-#define TXtimeout 500                          //transmit timeout in mS. If 0 return from transmit function after send.  
+#define TXtimeout 100                          //transmit timeout in mS. If 0 return from transmit function after send.  
 #define TXattempts 1                          //number of times to attempt to TX and get an Ack before failing  
 
 //Pong Variables
 const uint8_t RXBUFFER_SIZE = 251;              //RX buffer size, set to max payload length of 251, or maximum expected length
 uint8_t RXBUFFER[RXBUFFER_SIZE];                //create the buffer that received packets are copied into
-#define ACKdelay 100                            //delay in mS before sending acknowledge                    
-#define RXtimeout 1000                          //receive timeout in mS. only for radio mode 
+#define ACKdelay 50                            //delay in mS before sending acknowledge                    
+#define RXtimeout 200                          //receive timeout in mS. only for radio mode 
 uint8_t RXPacketL;                              //stores length of packet received
 uint8_t RXPayloadL;                             //stores length of payload received
 uint8_t PacketOK;                               //set to > 0 if packetOK
@@ -648,7 +648,7 @@ bool SxRange()
   MsgOut += Sender;
   MsgOut += ",";
   //if(debug){Serial.println("Transmitting Ranging request.");}
-  LT.transmitRanging(MyID, TXtimeoutmS, RangingTXPower, WAIT_TX);
+  LT.transmitRanging(MasterID, TXtimeoutmS, RangingTXPower, WAIT_TX);
   IrqStatus = LT.readIrqStatus(); //Irqstatus is a register value true when done
   if ( IrqStatus & IRQ_RANGING_MASTER_RESULT_VALID){
       //digitalWrite(LED1, HIGH);

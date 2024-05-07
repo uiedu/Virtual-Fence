@@ -51,9 +51,9 @@ SPIFlash flash(Flashpin, expectedDeviceID);
 uint32_t RangingAddress = Stations;          //must match address in recever
 
 bool debug = false;                          //Debug Message ON
-bool Tweet = true;                         //Broadcast instead of serial out
-bool Record = true;                        //Record to memory 
-bool GoRange = false;
+bool Tweet = false;                         //Broadcast instead of serial out
+bool Record = false;                        //Record to memory 
+bool GoRange = true;
     
 
 //UDF definitions
@@ -112,15 +112,15 @@ uint8_t RadioMode = 0; //Listen mode by default
 uint8_t buff[] = "Hello World";
 uint16_t PayloadCRC;
 uint8_t TXPacketL;
-#define ACKtimeout 500                         //Acknowledge timeout in mS                      
-#define TXtimeout 500                          //transmit timeout in mS. If 0 return from transmit function after send.  
+#define ACKtimeout 200                         //Acknowledge timeout in mS                      
+#define TXtimeout 100                          //transmit timeout in mS. If 0 return from transmit function after send.  
 #define TXattempts 1                          //number of times to attempt to TX and get an Ack before failing  
 
 //Pong Variables
 const uint8_t RXBUFFER_SIZE = 251;              //RX buffer size, set to max payload length of 251, or maximum expected length
 uint8_t RXBUFFER[RXBUFFER_SIZE];                //create the buffer that received packets are copied into
-#define ACKdelay 100                            //delay in mS before sending acknowledge                    
-#define RXtimeout 500                         //receive timeout in mS.   
+#define ACKdelay 50                            //delay in mS before sending acknowledge                    
+#define RXtimeout 200                         //receive timeout in mS.   
 uint8_t RXPacketL;                              //stores length of packet received
 uint8_t RXPayloadL;                             //stores length of payload received
 uint8_t PacketOK;                               //set to > 0 if packetOK
