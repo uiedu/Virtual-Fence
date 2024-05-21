@@ -9,7 +9,8 @@
 
 //These are the pin definitions for one of my own boards, the Easy Pro Mini,
 //be sure to change the definitions to match your own setup.
-
+#define PSS A0					// SS pin for Potentiometer MCP41X2-104
+#define FSS A3					// SS pin for Flash memory
 #define NSS 10        //Chip Select pin. From Circuit digram (Beaccon V2 with Mega) NSSCTS is connected to D10
 #define RFBUSY 7      //From Circuit digram (Beaccon V2 with Mega) BUSY is connected to D7
 #define NRESET 9      //From Circuit digram (Beaccon V2 with Mega) NRREET is connected to D10
@@ -29,7 +30,7 @@ const uint8_t CodeRate = LORA_CR_4_5;            //LoRa coding rate
 const uint16_t Calibration = 11350;              //Manual Ranging calibrarion value
 
 const int8_t RangingTXPower = 10;                //Transmit power used
-uint32_t RangingAddress = 5;              //must match address in recever
+const uint32_t RangingAddress = 1;              //must match address in recever
 
 const uint16_t  waittimemS = 10000;              //wait this long in mS for packet before assuming timeout
 const uint16_t  TXtimeoutmS = 5000;              //ranging TX timeout in mS
@@ -40,3 +41,7 @@ float distance_adjustment = 1.0000;              //adjustment factor to calculat
 
 #define ENABLEOLED                               //enable this define to use display 
 #define ENABLEDISPLAY                            //enable this define to use display
+
+//I2CLCD A4 SDA and A5 SCL
+#define RedLED 6
+#define GreenLED 8

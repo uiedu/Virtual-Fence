@@ -23,6 +23,13 @@ uint16_t expectedDeviceID = 0xEF40;
 uint32_t Last_Address = 0;
 SPIFlash flash(Flashpin, expectedDeviceID);
 
+//Radio Variables
+#define RXBUFFER_SIZE 255                       //RX buffer size
+uint32_t RXpacketCount;
+uint8_t RXBUFFER[RXBUFFER_SIZE]; 
+uint8_t RXPacketL;                              //stores length of packet received         
+
+
 /* Comment 01
 #ifdef ENABLEOLED
 #include <U8x8lib.h>                                        //https://github.com/olikraus/u8g2 
@@ -41,9 +48,10 @@ int16_t RangingRSSI;
 //UDF definitions
 void FlashWrite(String Str);
 void FlashRead();
+void FlashReset();
 String MsgIn;
-String ReadCommand();
-
+String ReadCommand(uint8_t Source);
+void Execute(String Msg);
 
 void loop()
 {
@@ -51,13 +59,14 @@ void loop()
   distance_sum = 0;
   range_result_sum = 0;
   rangeing_results = 0;                           //count of valid results in each loop
-
+  if(RangingAddress++ >=5 ){RangingAddress=1;}
   for (index = 1; index <= rangeingcount; index++)
   {
 
     startrangingmS = millis();
 
-    Serial.println(F("Start Ranging"));
+    Serial.print(F("Start Ranging To: "));
+    Serial.println(RangingAddress);
 
     LT.transmitRanging(RangingAddress, TXtimeoutmS, RangingTXPower, WAIT_TX);
 
@@ -67,11 +76,11 @@ void loop()
     {
       rangeing_results++;
       rangeings_valid++;
-      digitalWrite(LED1, HIGH);
+      //digitalWrite(LED1, HIGH);
       Serial.print(F("Valid"));
       range_result = LT.getRangingResultRegValue(RANGING_RESULT_RAW);
-      Serial.print(F(",Register,"));
-      Serial.print(range_result);
+      //Serial.print(F(",Register,"));
+      //Serial.print(range_result);
 
       if (range_result > 800000)
       {
@@ -84,13 +93,13 @@ void loop()
 
       Serial.print(F(",Distance,"));
       Serial.print(distance, 1);
-      Serial.print(F(",RSSIReg,"));
-      Serial.print(LT.readRegister(REG_RANGING_RSSI));
+      //Serial.print(F(",RSSIReg,"));
+      //Serial.print(LT.readRegister(REG_RANGING_RSSI));
       RangingRSSI = LT.getRangingRSSI();
       Serial.print(F(",RSSI,"));
       Serial.print(RangingRSSI);
       Serial.print(F("dBm"));
-      digitalWrite(LED1, LOW);
+      //digitalWrite(LED1, LOW);
     }
     else
     {
@@ -124,6 +133,10 @@ void loop()
       Serial.print(range_result_average);
       Serial.print(F(",AverageDistance,"));
       Serial.print(distance_average, 1);
+      MsgIn = ReadCommand(0);
+      Execute(MsgIn);
+      MsgIn = ReadCommand(1);
+      Execute(MsgIn);
       /*
       FlashWrite(String(distance_average));
       
@@ -147,7 +160,7 @@ void loop()
       }
       */
 
-      delay(2000);
+      delay(1000);
 
     }
     Serial.println();
@@ -316,17 +329,29 @@ void FlashRead(){
    //delay(10000);
 }
 
-// This function returns the command within a pair of () sent from serial port
-String ReadCommand() { //Return the command in pair of ()
-// This is a better code to ensure commnd from serial is read properly 
-// All command starts with ( and end with )
-    static bool recvInProgress = false; //Static is necessary not to terminte reading at the middle of the line
-    char startMarker = '(';
-    char endMarker = ')';
-    char rc;
-    String SerialMsg ="";
-    bool EndCommand = false;
-    //See if serial message is available, newCommand is false at this point
+void FlashReset(){
+  Serial.print("Resetting Flash: ");
+  Last_Address = 0; 
+  EEPROM.put(1,Last_Address); // EEPROM, starting Byte 1, write Last_Address which is 0 at this time. It will take 4 bytes as Last_address is Unsigend Long Integer
+  flash.chipErase(); //Erage the flash
+  while(flash.busy()); //Wait until all erased
+  Serial.println();
+  Serial.println("Reset Done");
+}
+
+
+// This function returns the command within a pair of () sent from serial port or Sx1280 radio
+String ReadCommand(uint8_t Source) { //Return the command in pair of () from serial if Source = 0, from radio if Source = 1
+  // This is a better code to ensure commnd from serial is read properly 
+  // All command starts with ( and end with )
+  static bool recvInProgress = false; //Static is necessary not to terminte reading at the middle of the line
+  char startMarker = '(';
+  char endMarker = ')';
+  char rc;
+  String SerialMsg ="";
+  bool EndCommand = false;
+  //See if serial message is available, newCommand is false at this point
+  if (Source == 0) { //Source 0 is serial command
     while (Serial.available() > 0 && EndCommand == false) {
         rc = Serial.read();
         delay(1);
@@ -346,6 +371,45 @@ String ReadCommand() { //Return the command in pair of ()
             recvInProgress = true;
         }
     }
-    return SerialMsg;
+  }
+  else if (Source == 1) //Listen to radio
+  {
+    //Assumes that radio is in listen mode
+    RXPacketL = LT.receiveIRQ(RXBUFFER, RXBUFFER_SIZE, 10, WAIT_RX); //wait for a packet to arrive with 1seconds (10mS) timeout
+    uint8_t i =0;
+    while (i < RXPacketL && EndCommand == false) {
+      rc = RXBUFFER[i++];
+      
+      if (recvInProgress == true) { //recvInProgress is False when first char is read so skip this condition to Else
+          if (rc != endMarker) { //Keep reading
+              SerialMsg += rc;
+          }
+          else { //End marked found
+              recvInProgress = false;
+              EndCommand = true;
+          }
+      }
+
+      else if (rc == startMarker) { //No need to read until start marker is found
+          SerialMsg = ""; //Start marker found get ready to read
+          recvInProgress = true;
+      }
+    }
+  
+  }
+  
+ return SerialMsg;   
 }
 
+void Execute(String Msg){
+  if (Msg == ""){return;}
+  
+  if(Msg=="reset") 
+  {
+    FlashReset();
+  }
+  else if (Msg=="read")
+  {
+    FlashRead();
+  }
+}

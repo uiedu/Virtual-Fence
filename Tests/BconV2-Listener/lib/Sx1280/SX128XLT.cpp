@@ -417,7 +417,7 @@ void SX128XLT::checkBusy()
       config();                                   //re-run saved config
       break;
     }
-  } while (digitalRead(_RFBUSY));   //My Comment: When NSS pin pulled high _RFBUSY goes high
+  } while (digitalRead(_RFBUSY));
 
 }
 #endif
@@ -2152,23 +2152,12 @@ void SX128XLT::wake()
   Serial.println(F("wake()"));
 #endif
 
-  //digitalWrite(_NSS, LOW);
-  //delay(1);
+  digitalWrite(_NSS, LOW);
+  delay(1);
   digitalWrite(_NSS, HIGH);
   delay(1);
 }
 
-void SX128XLT::Sleep()
-{
-#ifdef SX128XDEBUG
-  Serial.println(F("wake()"));
-#endif
-  
-  //digitalWrite(_NSS, LOW);
-  //delay(1);
-  digitalWrite(_NSS, HIGH);
-  delay(1);
-}
 
 int32_t SX128XLT::getFrequencyErrorRegValue()
 {
@@ -3399,7 +3388,7 @@ bool SX128XLT::transmitRanging(uint32_t address, uint16_t timeout, int8_t txpowe
   }
 }
 
-
+//Used in main with 4 parameters
 uint8_t SX128XLT::receiveRanging(uint32_t address, uint16_t timeout, int8_t txpower, uint8_t wait)
 {
 #ifdef SX128XDEBUG
@@ -3410,7 +3399,7 @@ uint8_t SX128XLT::receiveRanging(uint32_t address, uint16_t timeout, int8_t txpo
   setRangingSlaveAddress(address);
   setDioIrqParams(IRQ_RADIO_ALL, (IRQ_RANGING_SLAVE_RESPONSE_DONE + IRQ_RANGING_SLAVE_REQUEST_DISCARDED + IRQ_HEADER_ERROR), 0, 0);
   setRx(timeout);
-
+ 
   if (!wait)
   {
     return NO_WAIT;                                          //not wait requested so no packet length to pass
@@ -3428,6 +3417,7 @@ uint8_t SX128XLT::receiveRanging(uint32_t address, uint16_t timeout, int8_t txpo
   {
     return false;                                            //so we can check for packet having enough buffer space
   }
+  
 }
 
 
@@ -5962,7 +5952,35 @@ uint8_t SX128XLT::sendACKDTIRQ(uint8_t *header, uint8_t headersize, int8_t txpow
   return _TXPacketL;                                                         //TX OK so return TXpacket length
 }
 
+//UDF
 
+uint16_t SX128XLT::GetCalibration(int BW, int SF)
+{
+  //BW is 400,800,or 1600
+  //SW is 5 to 10
+  SF = SF/16-5;
+  uint16_t BW400[6] = {10299,   10271,   10244,   10242,   10230,   10246};
+  uint16_t BW800[6] = {11486,   11474,   11453,   11426,   11417,   11401};
+  uint16_t BW1600[6] = {13308,   13493,   13528,   13515,   13430,   13376};
+  if (BW == LORA_BW_0400){return BW400[SF];} 
+  else if (BW == LORA_BW_0800){return BW800[SF];}
+  else if (BW == LORA_BW_1600){return BW1600[SF];}
+  else{ return 0;}
+  
+};
+
+void SX128XLT::ResetIRQ()
+{
+  setDioIrqParams(IRQ_RADIO_ALL, (IRQ_RANGING_SLAVE_RESPONSE_DONE + IRQ_RANGING_SLAVE_REQUEST_DISCARDED + IRQ_HEADER_ERROR), 0, 0);
+  setRx(0);
+  while (!digitalRead(_DIO1) ); 
+  
+};
+
+bool SX128XLT::NewMessage()
+{
+ return false; 
+}
 
 
 /*
