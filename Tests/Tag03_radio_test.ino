@@ -2,7 +2,7 @@
 #define rxPin  7
 #define txPin  8
 
-SoftwareSerial mySerial(rxPin,txPin,true);
+SoftwareSerial mySerial(rxPin,txPin);
 void setup() {
  
   // initialize both serial ports:
